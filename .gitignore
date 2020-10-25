@@ -1,3 +1,4 @@
 /target
 .idea
-/uid
+/ui/elm-stuff
+/ui/public/elm.js
