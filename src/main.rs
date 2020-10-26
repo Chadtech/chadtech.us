@@ -1,6 +1,7 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use notify::{watcher, RecursiveMode, Watcher};
+use notify::{raw_watcher, watcher, DebouncedEvent, RecursiveMode, Watcher};
 use std::env;
+use std::path::PathBuf;
 use std::process::Command;
 use std::sync::mpsc::channel;
 use std::thread;
@@ -17,27 +18,28 @@ enum Deployment {
 }
 
 fn watch_and_recompile_ui() {
-    // Create a channel to receive the events.
     let (sender, receiver) = channel();
 
-    // Create a watcher object, delivering debounced events.
-    // The notification back-end is selected based on the platform.
-    let mut watcher = watcher(sender, Duration::from_secs(10)).unwrap();
+    let mut watcher = raw_watcher(sender).unwrap();
 
-    // Add a path to be watched. All files and directories at that path and
-    // below will be monitored for changes.
     watcher.watch("./ui/src", RecursiveMode::Recursive).unwrap();
 
     loop {
         match receiver.recv() {
-            Ok(event) => {
-                println!("{:?}", event);
-                Command::new("elm")
-                    .current_dir("./ui")
-                    .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
-                    .spawn()
-                    .expect("elm failed to compile");
-            }
+            Ok(event) => match event.path {
+                None => {}
+                Some(filepath) => {
+                    if filepath.extension().and_then(|ext| ext.to_str()) == Some("elm") {
+                        println!("Compiling");
+
+                        Command::new("elm")
+                            .current_dir("./ui")
+                            .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
+                            .spawn()
+                            .expect("elm failed to compile");
+                    }
+                }
+            },
             Err(e) => println!("watch error: {:?}", e),
         }
     }
