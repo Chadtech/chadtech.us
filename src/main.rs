@@ -1,15 +1,9 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use notify::{raw_watcher, watcher, DebouncedEvent, RecursiveMode, Watcher};
+use notify::{raw_watcher, RecursiveMode, Watcher};
 use std::env;
-use std::path::PathBuf;
 use std::process::Command;
 use std::sync::mpsc::channel;
 use std::thread;
-use std::time::Duration;
-
-async fn welcome() -> impl Responder {
-    HttpResponse::Ok().body("Welcome to Chadtech.us")
-}
 
 #[derive(PartialEq)]
 enum Deployment {
@@ -17,33 +11,9 @@ enum Deployment {
     Prod { ip_address: String },
 }
 
-fn watch_and_recompile_ui() {
-    let (sender, receiver) = channel();
-
-    let mut watcher = raw_watcher(sender).unwrap();
-
-    watcher.watch("./ui/src", RecursiveMode::Recursive).unwrap();
-
-    loop {
-        match receiver.recv() {
-            Ok(event) => match event.path {
-                None => {}
-                Some(filepath) => {
-                    if filepath.extension().and_then(|ext| ext.to_str()) == Some("elm") {
-                        println!("Compiling");
-
-                        Command::new("elm")
-                            .current_dir("./ui")
-                            .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
-                            .spawn()
-                            .expect("elm failed to compile");
-                    }
-                }
-            },
-            Err(e) => println!("watch error: {:?}", e),
-        }
-    }
-}
+////////////////////////////////////////////////////////////////////////////////
+// MAIN //
+////////////////////////////////////////////////////////////////////////////////
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -61,6 +31,9 @@ async fn main() -> std::io::Result<()> {
         Deployment::Prod { ip_address } => ip_address.as_str(),
     };
 
+    compile_elm();
+    compile_js();
+
     if mode == &Deployment::Dev {
         thread::spawn(move || {
             watch_and_recompile_ui();
@@ -71,4 +44,61 @@ async fn main() -> std::io::Result<()> {
         .bind(ip_address)?
         .run()
         .await
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ROUTES //
+////////////////////////////////////////////////////////////////////////////////
+
+async fn welcome() -> impl Responder {
+    HttpResponse::Ok().body("Welcome to Chadtech.us")
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// COMPILATION //
+////////////////////////////////////////////////////////////////////////////////
+
+fn compile_elm() {
+    Command::new("elm")
+        .current_dir("./ui")
+        .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
+        .spawn()
+        .expect("Elm failed to compile");
+}
+
+fn compile_js() {
+    Command::new("cp")
+        .args(&["./ui/src/app.js", "ui/public/app.js"])
+        .spawn()
+        .expect("Failed to move app.js into ./public");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// DEV //
+////////////////////////////////////////////////////////////////////////////////
+
+fn watch_and_recompile_ui() {
+    let (sender, receiver) = channel();
+
+    let mut watcher = raw_watcher(sender).unwrap();
+
+    watcher.watch("./ui/src", RecursiveMode::Recursive).unwrap();
+
+    loop {
+        match receiver.recv() {
+            Ok(event) => match event.path {
+                None => {}
+                Some(filepath) => {
+                    let file_extension = filepath.extension().and_then(|ext| ext.to_str());
+
+                    match file_extension {
+                        Some("elm") => compile_elm(),
+                        Some("js") => compile_js(),
+                        _ => {}
+                    }
+                }
+            },
+            Err(e) => println!("watch error: {:?}", e),
+        }
+    }
 }

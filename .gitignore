@@ -2,3 +2,4 @@
 .idea
 /ui/elm-stuff
 /ui/public/elm.js
+/ui/public/app.js
