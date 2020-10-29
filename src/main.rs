@@ -1,14 +1,52 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use notify::{raw_watcher, RecursiveMode, Watcher};
 use std::env;
+use std::fs;
 use std::process::Command;
 use std::sync::mpsc::channel;
 use std::thread;
 
-#[derive(PartialEq)]
-enum Deployment {
-    Dev,
-    Prod { ip_address: String },
+////////////////////////////////////////////////////////////////////////////////
+// TYPES //
+////////////////////////////////////////////////////////////////////////////////
+
+enum Model {
+    Dev(DevModel),
+    Prod(ProdModel),
+}
+
+impl Model {
+    fn init() -> Model {
+        let args: Vec<String> = env::args().collect();
+
+        match args.get(1) {
+            None => Model::Dev(DevModel {
+                ip_address: "127.0.0.1:8080".to_string(),
+            }),
+            Some(ip_address) => Model::Prod(ProdModel {
+                ip_address: ip_address.clone(),
+                elm_file: read_elm_file().map_err(|err| err.to_string()),
+                js_file: read_js_file().map_err(|err| err.to_string()),
+            }),
+        }
+    }
+
+    fn get_ip_address(self) -> String {
+        match self {
+            Model::Dev(dev_model) => dev_model.ip_address,
+            Model::Prod(prod_model) => prod_model.ip_address,
+        }
+    }
+}
+
+struct DevModel {
+    ip_address: String,
+}
+
+struct ProdModel {
+    ip_address: String,
+    elm_file: Result<String, String>,
+    js_file: Result<String, String>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -17,41 +55,108 @@ enum Deployment {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let args: Vec<String> = env::args().collect();
-
-    let mode = &match args.get(1) {
-        None => Deployment::Dev,
-        Some(ip_address) => Deployment::Prod {
-            ip_address: ip_address.clone(),
-        },
-    };
-
-    let ip_address = match mode {
-        Deployment::Dev => "127.0.0.1:8080",
-        Deployment::Prod { ip_address } => ip_address.as_str(),
-    };
+    let model = Model::init();
 
     compile_elm();
     compile_js();
 
-    if mode == &Deployment::Dev {
-        thread::spawn(move || {
-            watch_and_recompile_ui();
-        });
-    }
+    match model {
+        Model::Dev(_) => {
+            thread::spawn(move || {
+                watch_and_recompile_ui();
+            });
+        }
+        _ => {}
+    };
 
-    HttpServer::new(|| App::new().route("/", web::get().to(welcome)))
-        .bind(ip_address)?
-        .run()
-        .await
+    HttpServer::new(|| {
+        App::new()
+            .data(Model::init())
+            .route("/elm.js", web::get().to(elm_asset_route))
+            .route("/app.js", web::get().to(js_asset_route))
+            .default_service(web::get().to(frontend))
+    })
+    .bind(model.get_ip_address())?
+    .run()
+    .await
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// HELPER //
+////////////////////////////////////////////////////////////////////////////////
+
+fn ui_src(filename: &str) -> String {
+    let mut buf = String::new();
+
+    buf.push_str("./ui/src/");
+    buf.push_str(filename);
+
+    buf
+}
+
+fn ui_public(filename: &str) -> String {
+    let mut buf = String::new();
+
+    buf.push_str("./ui/public/");
+    buf.push_str(filename);
+
+    buf
+}
+
+fn read_elm_file() -> std::io::Result<String> {
+    fs::read_to_string(ui_public("elm.js"))
+}
+
+fn read_js_file() -> std::io::Result<String> {
+    fs::read_to_string(ui_public("app.js"))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // ROUTES //
 ////////////////////////////////////////////////////////////////////////////////
 
-async fn welcome() -> impl Responder {
-    HttpResponse::Ok().body("Welcome to Chadtech.us")
+async fn elm_asset_route(model: web::Data<Model>) -> HttpResponse {
+    match model.get_ref() {
+        Model::Dev(_) => match read_elm_file() {
+            Ok(elm_file) => HttpResponse::Ok().body(elm_file),
+            Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
+        },
+        Model::Prod(prod_model) => match &prod_model.elm_file {
+            Ok(file_str) => HttpResponse::Ok().body(file_str),
+            Err(_) => HttpResponse::InternalServerError().body("elm file was missing"),
+        },
+    }
+}
+
+async fn js_asset_route(model: web::Data<Model>) -> HttpResponse {
+    match model.get_ref() {
+        Model::Dev(_) => match read_js_file() {
+            Ok(elm_file) => HttpResponse::Ok().body(elm_file),
+            Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
+        },
+        Model::Prod(prod_model) => match &prod_model.js_file {
+            Ok(file_str) => HttpResponse::Ok().body(file_str),
+            Err(_) => HttpResponse::InternalServerError().body("elm file was missing"),
+        },
+    }
+}
+
+async fn frontend() -> HttpResponse {
+    HttpResponse::Ok().body(
+        r#"
+<html>
+
+<head>
+  <script type="text/javascript" src="./elm.js"></script>
+</head>
+
+<body>
+</body>
+<script type="text/javascript" src="./app.js"></script>
+
+</html>
+        "#,
+    )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +173,7 @@ fn compile_elm() {
 
 fn compile_js() {
     Command::new("cp")
-        .args(&["./ui/src/app.js", "ui/public/app.js"])
+        .args(&[ui_src("app.js"), ui_public("app.js")])
         .spawn()
         .expect("Failed to move app.js into ./public");
 }
