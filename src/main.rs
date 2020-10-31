@@ -20,9 +20,15 @@ impl Model {
         let args: Vec<String> = env::args().collect();
 
         match args.get(1) {
-            None => Model::Dev(DevModel {
-                ip_address: "127.0.0.1:8080".to_string(),
-            }),
+            None => {
+                let mut ip_address = String::new();
+
+                ip_address.push_str("127.0.0.1");
+                ip_address.push(':');
+                ip_address.push_str(LOCAL_PORT.to_string().as_str());
+
+                Model::Dev(DevModel { ip_address })
+            }
             Some(ip_address) => Model::Prod(ProdModel {
                 ip_address: ip_address.clone(),
                 elm_file: read_elm_file().map_err(|err| err.to_string()),
@@ -57,16 +63,14 @@ struct ProdModel {
 async fn main() -> std::io::Result<()> {
     let model = Model::init();
 
+    write_frontend_api_code(&model)?;
     compile_elm();
     compile_js();
 
-    match model {
-        Model::Dev(_) => {
-            thread::spawn(move || {
-                watch_and_recompile_ui();
-            });
-        }
-        _ => {}
+    if let Model::Dev(_) = model {
+        thread::spawn(move || {
+            watch_and_recompile_ui();
+        });
     };
 
     HttpServer::new(|| {
@@ -86,20 +90,27 @@ async fn main() -> std::io::Result<()> {
 ////////////////////////////////////////////////////////////////////////////////
 
 fn ui_src(filename: &str) -> String {
-    let mut buf = String::new();
-
-    buf.push_str("./ui/src/");
+    let mut buf = ui_dir("src/");
     buf.push_str(filename);
-
     buf
 }
 
 fn ui_public(filename: &str) -> String {
-    let mut buf = String::new();
-
-    buf.push_str("./ui/public/");
+    let mut buf = ui_dir("public/");
     buf.push_str(filename);
+    buf
+}
 
+fn ui_codegen(filename: &str) -> String {
+    let mut buf = ui_dir("src/CodeGen/");
+    buf.push_str(filename);
+    buf
+}
+
+fn ui_dir(path: &str) -> String {
+    let mut buf = String::new();
+    buf.push_str("./ui/");
+    buf.push_str(path);
     buf
 }
 
@@ -163,7 +174,57 @@ async fn frontend() -> HttpResponse {
 // COMPILATION //
 ////////////////////////////////////////////////////////////////////////////////
 
+fn write_frontend_api_code(model: &Model) -> std::io::Result<()> {
+    let url = match model {
+        Model::Dev(_) => {
+            let localhost_str = "localhost";
+
+            let mut buf = String::new();
+
+            buf.push_str(localhost_str);
+            buf.push(':');
+            buf.push_str(LOCAL_PORT.to_string().as_str());
+
+            buf
+        }
+        Model::Prod(prod_model) => {
+            let mut buf = String::new();
+
+            buf.push_str(prod_model.ip_address.as_str());
+            buf.push(':');
+            buf.push_str(LOCAL_PORT.to_string().as_str());
+
+            buf
+        }
+    };
+
+    fs::write(
+        ui_codegen("Api/Root.elm"),
+        str::replace(
+            r#"module CodeGen.Api.Root exposing 
+    ( asString 
+    )
+
+
+---------------------------------------------------------------
+-- API --
+---------------------------------------------------------------
+
+
+asString : String
+asString =
+    "${url}" 
+
+"#,
+            "${url}",
+            url.as_str(),
+        ),
+    )
+}
+
 fn compile_elm() {
+    clear_terminal();
+
     Command::new("elm")
         .current_dir("./ui")
         .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
@@ -172,15 +233,25 @@ fn compile_elm() {
 }
 
 fn compile_js() {
+    clear_terminal();
+
     Command::new("cp")
         .args(&[ui_src("app.js"), ui_public("app.js")])
         .spawn()
         .expect("Failed to move app.js into ./public");
 }
 
+fn clear_terminal() {
+    Command::new("clear")
+        .spawn()
+        .expect("Failed to clear terminal");
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // DEV //
 ////////////////////////////////////////////////////////////////////////////////
+
+const LOCAL_PORT: i64 = 8080;
 
 fn watch_and_recompile_ui() {
     let (sender, receiver) = channel();

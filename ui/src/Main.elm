@@ -2,15 +2,17 @@ module Main exposing (main)
 
 import Browser exposing (UrlRequest)
 import Browser.Navigation as Nav
-import Html.Styled as Html exposing (Html)
+import Document exposing (Document)
 import Json.Decode as Decode exposing (Decoder)
-import Layout exposing (Document)
-import Page.Home as Home
+import Layout exposing (Layout)
+import Page.Blog as Blog
 import Ports.Incoming
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
 import Util.Cmd as CmdUtil
+import View.Cell as Cell
+import View.Row as Row exposing (Row)
 
 
 
@@ -22,7 +24,7 @@ import Util.Cmd as CmdUtil
 main : Program Decode.Value Model Msg
 main =
     { init = init
-    , view = Layout.toBrowserDocument << view
+    , view = Document.toBrowserDocument << view
     , update = update
     , subscriptions = subscriptions
     , onUrlRequest = UrlRequested
@@ -38,15 +40,15 @@ main =
 
 
 type Model
-    = PageNotFound Session
-    | Home Home.Model
+    = PageNotFound Session Layout
+    | Blog Blog.Model
 
 
 type Msg
     = MsgDecodeFailed Ports.Incoming.Error
     | UrlRequested UrlRequest
     | RouteChanged (Maybe Route)
-    | HomeMsg Home.Msg
+    | BlogMsg Blog.Msg
 
 
 
@@ -62,7 +64,7 @@ init json url navKey =
         session =
             Session.init navKey
     in
-    PageNotFound session
+    PageNotFound session Layout.init
         |> handleRouteChange (Route.fromUrl url)
 
 
@@ -75,11 +77,21 @@ init json url navKey =
 getSession : Model -> Session
 getSession model =
     case model of
-        PageNotFound session ->
+        PageNotFound session _ ->
             session
 
-        Home subModel ->
-            Home.getSession subModel
+        Blog subModel ->
+            Blog.getSession subModel
+
+
+getLayout : Model -> Layout
+getLayout model =
+    case model of
+        PageNotFound _ layout ->
+            layout
+
+        Blog subModel ->
+            Blog.getLayout subModel
 
 
 
@@ -90,45 +102,78 @@ getSession model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        session : Session
+        session =
+            getSession model
+    in
     case msg of
         MsgDecodeFailed _ ->
             model
                 |> CmdUtil.withNoCmd
 
         UrlRequested urlRequest ->
-            model
-                |> CmdUtil.withNoCmd
+            case urlRequest of
+                Browser.Internal url ->
+                    case Route.fromUrl url of
+                        Just route ->
+                            ( model
+                            , Session.goTo session route
+                            )
+
+                        Nothing ->
+                            model
+                                |> CmdUtil.withNoCmd
+
+                Browser.External url ->
+                    ( model
+                    , Nav.load url
+                    )
 
         RouteChanged maybeRoute ->
             handleRouteChange maybeRoute model
 
-        HomeMsg subMsg ->
+        BlogMsg subMsg ->
             case model of
-                Home subModel ->
-                    Home.update subMsg subModel
-                        |> CmdUtil.mapBoth Home HomeMsg
+                Blog subModel ->
+                    Blog.update subMsg subModel
+                        |> CmdUtil.mapBoth Blog BlogMsg
 
                 _ ->
-                    ( model, Cmd.none )
+                    model
+                        |> CmdUtil.withNoCmd
 
 
 handleRouteChange : Maybe Route -> Model -> ( Model, Cmd Msg )
 handleRouteChange maybeRoute model =
     let
+        session : Session
         session =
             getSession model
+
+        layout : Layout
+        layout =
+            getLayout model
     in
     case maybeRoute of
         Nothing ->
-            PageNotFound session
+            PageNotFound session layout
                 |> CmdUtil.withNoCmd
 
         Just route ->
-            case route of
-                Route.Landing ->
-                    ( Home <| Home.init session
+            let
+                initBlog : () -> ( Model, Cmd Msg )
+                initBlog _ =
+                    ( Blog <| Blog.init session layout
                     , Cmd.none
                     )
+            in
+            case route of
+                Route.Landing ->
+                    initBlog ()
+
+                Route.Blog ->
+                    initBlog ()
 
 
 
@@ -139,15 +184,23 @@ handleRouteChange maybeRoute model =
 
 view : Model -> Document Msg
 view model =
-    case model of
-        PageNotFound _ ->
-            Layout.document
-                "Page not found"
-                [ Html.text "Page not found!" ]
+    let
+        body : List (Row Msg)
+        body =
+            case model of
+                PageNotFound _ _ ->
+                    [ Row.fromCell <| Cell.fromString "Page not found!" ]
 
-        Home subModel ->
-            Home.view subModel
-                |> Layout.map HomeMsg
+                Blog subModel ->
+                    Blog.view subModel
+                        |> List.map (Row.map BlogMsg)
+
+        layout : Layout
+        layout =
+            getLayout model
+    in
+    body
+        |> Layout.view layout
 
 
 
@@ -166,8 +219,8 @@ subscriptions model =
 incomingPortsListeners : Model -> Ports.Incoming.Listener Msg
 incomingPortsListeners model =
     case model of
-        PageNotFound _ ->
+        PageNotFound _ _ ->
             Ports.Incoming.none
 
-        Home _ ->
-            Ports.Incoming.map HomeMsg Home.incomingPortsListener
+        Blog _ ->
+            Ports.Incoming.map BlogMsg Blog.incomingPortsListener

@@ -1,25 +1,106 @@
 module Layout exposing
-    ( Document
-    , document
-    , map
-    , toBrowserDocument
+    ( Layout
+    , init
+    , view
     )
 
-import Browser
-import Html.Styled as Html exposing (Html)
-import Style
+import Document exposing (Document)
+import Route
+import Style.Color as Color
+import Style.Padding as Padding
+import Style.Size as Size exposing (Size)
+import View.Button as Button exposing (Button)
+import View.Cell as Cell exposing (Cell)
+import View.Row as Row exposing (Row)
 
 
 
 --------------------------------------------------------------------------------
--- VIEW --
+-- TYPES --
 --------------------------------------------------------------------------------
 
 
-type alias Document msg =
-    { title : String
-    , body : List (Html msg)
-    }
+type alias Layout =
+    {}
+
+
+type NavItem
+    = Blog
+    | Twitter
+    | Github
+
+
+
+--------------------------------------------------------------------------------
+-- IMPLEMENTATION --
+--------------------------------------------------------------------------------
+
+
+allNavItems : List NavItem
+allNavItems =
+    [ Blog
+    , Twitter
+    , Github
+    ]
+
+
+navigation : Cell msg
+navigation =
+    let
+        toLabel : NavItem -> String
+        toLabel navItem =
+            case navItem of
+                Blog ->
+                    "Blog"
+
+                Twitter ->
+                    "Twitter"
+
+                Github ->
+                    "Github"
+
+        withClickHandling : NavItem -> Button msg -> Button msg
+        withClickHandling navItem =
+            case navItem of
+                Blog ->
+                    Button.withLink Route.blog
+
+                Twitter ->
+                    Button.withLinkToNewWindow
+                        "https://www.twitter.com/TheRealChadtech"
+
+                Github ->
+                    Button.withLinkToNewWindow
+                        "https://www.github.com/chadtech"
+
+        navItemView : NavItem -> Row msg
+        navItemView navItem =
+            Button.fromLabel (toLabel navItem)
+                |> withClickHandling navItem
+                |> Button.toCell
+                |> Row.fromCell
+    in
+    allNavItems
+        |> List.map navItemView
+        |> Row.withSpaceBetween gapSize
+        |> Row.toCell
+        |> Cell.withExactWidth (Size.extraLarge 3)
+
+
+headerRow : Row msg
+headerRow =
+    "Chadtech Online"
+        |> Cell.fromString
+        |> Cell.withFontColor Color.content1
+        |> Cell.pad (Padding.all Size.medium)
+        |> Row.fromCell
+        |> Row.withBackgroundColor Color.content4
+        |> Row.withTagName "header"
+
+
+gapSize : Size
+gapSize =
+    Size.small
 
 
 
@@ -28,22 +109,18 @@ type alias Document msg =
 --------------------------------------------------------------------------------
 
 
-map : (a -> msg) -> Document a -> Document msg
-map toMsg doc =
-    { title = doc.title
-    , body = List.map (Html.map toMsg) doc.body
-    }
+init : Layout
+init =
+    {}
 
 
-document : String -> List (Html msg) -> Document msg
-document title body =
-    { title = title
-    , body = body
-    }
-
-
-toBrowserDocument : Document msg -> Browser.Document msg
-toBrowserDocument doc =
-    { title = doc.title
-    , body = List.map Html.toUnstyled (Style.globals :: doc.body)
-    }
+view : Layout -> List (Row msg) -> Document msg
+view layout body =
+    [ headerRow
+    , Row.fromCells
+        [ navigation
+        , Row.toCell body
+        ]
+    ]
+        |> Row.withSpaceBetween gapSize
+        |> Document.fromBody
