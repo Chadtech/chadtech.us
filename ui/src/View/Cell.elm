@@ -2,19 +2,25 @@ module View.Cell exposing
     ( Cell
     , fromHtml
     , fromString
+    , indent
     , map
     , pad
     , toHtml
+    , withBackgroundColor
     , withExactWidth
     , withFontColor
+    , withSpaceBetween
     )
 
 import Css
 import Html.Styled as H exposing (Html)
 import Html.Styled.Attributes as A
+import Style.Border as Border
 import Style.Color as Color exposing (Color)
+import Style.Margin as Margin
 import Style.Padding as Padding exposing (Padding)
 import Style.Size as Size exposing (Size)
+import Util.Css as CssUtil
 
 
 
@@ -28,6 +34,9 @@ type alias Cell msg =
     , fontColor : Maybe Color
     , padding : Maybe Padding
     , width : Width
+    , indent : Bool
+    , leftMargin : Maybe Size
+    , backgroundColor : Maybe Color
     }
 
 
@@ -53,6 +62,9 @@ fromHtml html =
     , fontColor = Nothing
     , padding = Nothing
     , width = Grow
+    , indent = False
+    , leftMargin = Nothing
+    , backgroundColor = Nothing
     }
 
 
@@ -62,7 +74,30 @@ map toMsg cell =
     , fontColor = cell.fontColor
     , padding = cell.padding
     , width = cell.width
+    , indent = cell.indent
+    , leftMargin = cell.leftMargin
+    , backgroundColor = cell.backgroundColor
     }
+
+
+withBackgroundColor : Color -> Cell msg -> Cell msg
+withBackgroundColor color cell =
+    { cell | backgroundColor = Just color }
+
+
+withSpaceBetween : Size -> List (Cell msg) -> List (Cell msg)
+withSpaceBetween size cells =
+    let
+        withMargin : Cell msg -> Cell msg
+        withMargin cell =
+            { cell | leftMargin = Just size }
+    in
+    case cells of
+        first :: rest ->
+            first :: List.map withMargin rest
+
+        [] ->
+            []
 
 
 withExactWidth : Size -> Cell msg -> Cell msg
@@ -78,6 +113,11 @@ pad padding cell =
 withFontColor : Color -> Cell msg -> Cell msg
 withFontColor color cell =
     { cell | fontColor = Just color }
+
+
+indent : Cell msg -> Cell msg
+indent cell =
+    { cell | indent = True }
 
 
 toHtml : Cell msg -> Html msg
@@ -105,9 +145,16 @@ toHtml cell =
         styles =
             [ widthStyle
             , Css.batch conditionalStyling
+            , CssUtil.when cell.indent <|
+                Border.toCss Border.indent
+            , CssUtil.fromMaybe
+                (Margin.left >> Margin.toCss)
+                cell.leftMargin
+            , CssUtil.fromMaybe
+                (Color.toCss >> Css.backgroundColor)
+                cell.backgroundColor
             ]
     in
     H.node "cell"
-        [ A.css styles
-        ]
+        [ A.css styles ]
         cell.html

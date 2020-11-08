@@ -1,8 +1,10 @@
 module View.Button exposing
     ( Button
+    , active
     , fromLabel
     , simple
     , toCell
+    , when
     , withLink
     , withLinkToNewWindow
     )
@@ -75,10 +77,31 @@ toHtml button =
             else
                 Border.outdent
 
+        textHighlight : Css.Style
+        textHighlight =
+            Css.color <| Color.toCss Color.content5
+
         activeStyle : Css.Style
         activeStyle =
-            Css.active
-                [ Border.toCss Border.indent ]
+            let
+                baseActiveStyle : Css.Style
+                baseActiveStyle =
+                    [ Border.toCss Border.indent
+                    , textHighlight
+                    ]
+                        |> Css.batch
+            in
+            if button.active then
+                baseActiveStyle
+
+            else
+                Css.active
+                    [ baseActiveStyle ]
+
+        hoverStyle : Css.Style
+        hoverStyle =
+            Css.hover
+                [ textHighlight ]
 
         styles : List Css.Style
         styles =
@@ -91,6 +114,7 @@ toHtml button =
             , Css.textDecoration Css.none
             , Css.textAlign Css.center
             , activeStyle
+            , hoverStyle
             ]
 
         clickAttrs : List (Attribute msg)
@@ -135,6 +159,20 @@ fromOnClick label click =
 --------------------------------------------------------------------------------
 -- API --
 --------------------------------------------------------------------------------
+
+
+when : Bool -> (Button msg -> Button msg) -> Button msg -> Button msg
+when cond f button =
+    if cond then
+        f button
+
+    else
+        button
+
+
+active : Button msg -> Button msg
+active button =
+    { button | active = True }
 
 
 withLink : Route -> Button msg -> Button msg

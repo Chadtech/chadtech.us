@@ -1,6 +1,7 @@
 module Style.Margin exposing
     ( Margin
     , all
+    , left
     , right
     , toCss
     , top
@@ -59,6 +60,11 @@ toCss margin =
 right : Size -> Margin
 right size =
     { none | right = Just size }
+
+
+left : Size -> Margin
+left size =
+    { none | left = Just size }
 
 
 top : Size -> Margin

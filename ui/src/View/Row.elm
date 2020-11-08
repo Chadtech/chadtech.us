@@ -1,5 +1,6 @@
 module View.Row exposing
     ( Row
+    , fillVerticalSpace
     , fromCell
     , fromCells
     , map
@@ -16,6 +17,7 @@ import Html.Styled.Attributes as A
 import Style.Color as Color exposing (Color)
 import Style.Margin as Margin
 import Style.Size exposing (Size)
+import Util.Css as CssUtil
 import View.Cell as Cell exposing (Cell)
 
 
@@ -30,6 +32,7 @@ type alias Row msg =
     , backgroundColor : Maybe Color
     , semantics : Maybe String
     , topMargin : Maybe Size
+    , fillVerticalSpace : Bool
     }
 
 
@@ -45,6 +48,7 @@ fromCells cells =
     , backgroundColor = Nothing
     , semantics = Nothing
     , topMargin = Nothing
+    , fillVerticalSpace = False
     }
 
 
@@ -66,7 +70,13 @@ map toMsg row =
     , backgroundColor = row.backgroundColor
     , semantics = row.semantics
     , topMargin = row.topMargin
+    , fillVerticalSpace = row.fillVerticalSpace
     }
+
+
+fillVerticalSpace : Row msg -> Row msg
+fillVerticalSpace row =
+    { row | fillVerticalSpace = True }
 
 
 withSpaceBetween : Size -> List (Row msg) -> List (Row msg)
@@ -110,6 +120,7 @@ toHtml row =
         styles =
             [ Css.displayFlex
             , Css.batch conditionalStyling
+            , CssUtil.when row.fillVerticalSpace (Css.flex <| Css.int 1)
             ]
     in
     H.node (Maybe.withDefault "row" row.semantics)

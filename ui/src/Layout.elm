@@ -1,11 +1,12 @@
 module Layout exposing
     ( Layout
+    , handleRouteChange
     , init
     , view
     )
 
 import Document exposing (Document)
-import Route
+import Route exposing (Route)
 import Style.Color as Color
 import Style.Padding as Padding
 import Style.Size as Size exposing (Size)
@@ -21,7 +22,7 @@ import View.Row as Row exposing (Row)
 
 
 type alias Layout =
-    {}
+    { activeNav : Maybe NavItem }
 
 
 type NavItem
@@ -44,8 +45,8 @@ allNavItems =
     ]
 
 
-navigation : Cell msg
-navigation =
+navigation : Maybe NavItem -> Cell msg
+navigation activeNavItem =
     let
         toLabel : NavItem -> String
         toLabel navItem =
@@ -77,6 +78,9 @@ navigation =
         navItemView navItem =
             Button.fromLabel (toLabel navItem)
                 |> withClickHandling navItem
+                |> Button.when
+                    (Just navItem == activeNavItem)
+                    Button.active
                 |> Button.toCell
                 |> Row.fromCell
     in
@@ -103,24 +107,45 @@ gapSize =
     Size.small
 
 
+routeToNavItem : Route -> NavItem
+routeToNavItem route =
+    case route of
+        Route.Landing ->
+            Blog
+
+        Route.Blog ->
+            Blog
+
+
+setActiveRoute : Maybe NavItem -> Layout -> Layout
+setActiveRoute maybeNavItem layout =
+    { layout | activeNav = maybeNavItem }
+
+
 
 --------------------------------------------------------------------------------
 -- API --
 --------------------------------------------------------------------------------
 
 
-init : Layout
-init =
-    {}
+handleRouteChange : Maybe Route -> Layout -> Layout
+handleRouteChange maybeRoute =
+    setActiveRoute
+        (Maybe.map routeToNavItem maybeRoute)
 
 
-view : Layout -> List (Row msg) -> Document msg
+init : Maybe Route -> Layout
+init route =
+    { activeNav = Maybe.map routeToNavItem route }
+
+
+view : Layout -> List (Cell msg) -> Document msg
 view layout body =
     [ headerRow
-    , Row.fromCells
-        [ navigation
-        , Row.toCell body
-        ]
+    , (navigation layout.activeNav :: body)
+        |> Cell.withSpaceBetween gapSize
+        |> Row.fromCells
+        |> Row.fillVerticalSpace
     ]
         |> Row.withSpaceBetween gapSize
         |> Document.fromBody

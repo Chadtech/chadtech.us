@@ -14,6 +14,7 @@ import Style.Color as Color
 import Style.Margin as Margin
 import Style.Padding as Padding
 import Style.Size as Size
+import View.Dialog as Dialog exposing (Dialog)
 import View.Row as Row exposing (Row)
 
 
@@ -26,6 +27,7 @@ import View.Row as Row exposing (Row)
 type alias Document msg =
     { title : Maybe String
     , body : List (Row msg)
+    , dialog : Maybe (Dialog msg)
     }
 
 
@@ -39,6 +41,7 @@ fromBody : List (Row msg) -> Document msg
 fromBody body =
     { title = Nothing
     , body = body
+    , dialog = Nothing
     }
 
 
@@ -51,6 +54,7 @@ map : (a -> msg) -> Document a -> Document msg
 map toMsg doc =
     { title = doc.title
     , body = List.map (Row.map toMsg) doc.body
+    , dialog = Maybe.map (Dialog.map toMsg) doc.dialog
     }
 
 
@@ -72,12 +76,24 @@ toBrowserDocument doc =
                 , Margin.toCss <| Margin.all Size.zero
                 , Css.flexDirection Css.column
                 , Css.displayFlex
+                , Css.height <| Css.pct 100
                 ]
             ]
                 |> Css.Global.global
+
+        nonPageHtml : List (Html msg)
+        nonPageHtml =
+            [ Just globalStyling
+            , Maybe.map Dialog.toHtml doc.dialog
+            ]
+                |> List.filterMap identity
+
+        html : List (Html msg)
+        html =
+            nonPageHtml ++ List.map Row.toHtml doc.body
     in
     { title =
         doc.title
             |> Maybe.withDefault "Chadtech"
-    , body = List.map Html.toUnstyled (globalStyling :: List.map Row.toHtml doc.body)
+    , body = List.map Html.toUnstyled html
     }

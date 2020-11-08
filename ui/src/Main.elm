@@ -11,7 +11,7 @@ import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
 import Util.Cmd as CmdUtil
-import View.Cell as Cell
+import View.Cell as Cell exposing (Cell)
 import View.Row as Row exposing (Row)
 
 
@@ -63,9 +63,13 @@ init json url navKey =
         session : Session
         session =
             Session.init navKey
+
+        route : Maybe Route
+        route =
+            Route.fromUrl url
     in
-    PageNotFound session Layout.init
-        |> handleRouteChange (Route.fromUrl url)
+    PageNotFound session (Layout.init route)
+        |> superHandleRouteChange route
 
 
 
@@ -92,6 +96,21 @@ getLayout model =
 
         Blog subModel ->
             Blog.getLayout subModel
+
+
+setLayout : Layout -> Model -> Model
+setLayout layout model =
+    case model of
+        PageNotFound session _ ->
+            PageNotFound session layout
+
+        Blog subModel ->
+            Blog <| Blog.setLayout layout subModel
+
+
+mapLayout : (Layout -> Layout) -> Model -> Model
+mapLayout f model =
+    setLayout (f <| getLayout model) model
 
 
 
@@ -131,7 +150,7 @@ update msg model =
                     )
 
         RouteChanged maybeRoute ->
-            handleRouteChange maybeRoute model
+            superHandleRouteChange maybeRoute model
 
         BlogMsg subMsg ->
             case model of
@@ -142,6 +161,13 @@ update msg model =
                 _ ->
                     model
                         |> CmdUtil.withNoCmd
+
+
+superHandleRouteChange : Maybe Route -> Model -> ( Model, Cmd Msg )
+superHandleRouteChange maybeRoute model =
+    model
+        |> mapLayout (Layout.handleRouteChange maybeRoute)
+        |> handleRouteChange maybeRoute
 
 
 handleRouteChange : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -185,15 +211,15 @@ handleRouteChange maybeRoute model =
 view : Model -> Document Msg
 view model =
     let
-        body : List (Row Msg)
+        body : List (Cell Msg)
         body =
             case model of
                 PageNotFound _ _ ->
-                    [ Row.fromCell <| Cell.fromString "Page not found!" ]
+                    [ Cell.fromString "Page not found!" ]
 
                 Blog subModel ->
                     Blog.view subModel
-                        |> List.map (Row.map BlogMsg)
+                        |> List.map (Cell.map BlogMsg)
 
         layout : Layout
         layout =

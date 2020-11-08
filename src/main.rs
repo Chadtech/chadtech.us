@@ -1,6 +1,8 @@
+mod flags;
+
+use crate::flags::Flags;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use notify::{raw_watcher, RecursiveMode, Watcher};
-use std::env;
 use std::fs;
 use std::process::Command;
 use std::sync::mpsc::channel;
@@ -10,47 +12,38 @@ use std::thread;
 // TYPES //
 ////////////////////////////////////////////////////////////////////////////////
 
-enum Model {
-    Dev(DevModel),
-    Prod(ProdModel),
+#[derive(Clone)]
+struct Model {
+    pub ip_address: String,
+    pub admin_password: String,
+    pub port_number: u64,
+    pub prod_model: Option<ProdModel>,
 }
 
 impl Model {
-    fn init() -> Model {
-        let args: Vec<String> = env::args().collect();
+    fn init() -> Result<Model, String> {
+        let flags = Flags::init()?;
 
-        match args.get(1) {
-            None => {
-                let mut ip_address = String::new();
-
-                ip_address.push_str("127.0.0.1");
-                ip_address.push(':');
-                ip_address.push_str(LOCAL_PORT.to_string().as_str());
-
-                Model::Dev(DevModel { ip_address })
-            }
-            Some(ip_address) => Model::Prod(ProdModel {
-                ip_address: ip_address.clone(),
+        let maybe_prod_model: Option<ProdModel> = if flags.dev_mode {
+            None
+        } else {
+            Some(ProdModel {
                 elm_file: read_elm_file().map_err(|err| err.to_string()),
                 js_file: read_js_file().map_err(|err| err.to_string()),
-            }),
-        }
-    }
+            })
+        };
 
-    fn get_ip_address(self) -> String {
-        match self {
-            Model::Dev(dev_model) => dev_model.ip_address,
-            Model::Prod(prod_model) => prod_model.ip_address,
-        }
+        Ok(Model {
+            ip_address: flags.ip_address,
+            admin_password: flags.admin_password,
+            port_number: flags.port_number,
+            prod_model: maybe_prod_model,
+        })
     }
 }
 
-struct DevModel {
-    ip_address: String,
-}
-
+#[derive(Clone)]
 struct ProdModel {
-    ip_address: String,
     elm_file: Result<String, String>,
     js_file: Result<String, String>,
 }
@@ -60,29 +53,32 @@ struct ProdModel {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    let model = Model::init();
+async fn main() -> Result<(), String> {
+    let model = Model::init()?;
 
-    write_frontend_api_code(&model)?;
+    write_frontend_api_code(&model).map_err(|err| err.to_string())?;
     compile_elm();
     compile_js();
 
-    if let Model::Dev(_) = model {
+    if let None = model.prod_model {
         thread::spawn(move || {
             watch_and_recompile_ui();
         });
     };
 
-    HttpServer::new(|| {
+    let ip_address = model.ip_address.clone();
+    HttpServer::new(move || {
         App::new()
-            .data(Model::init())
+            .data(model.clone())
             .route("/elm.js", web::get().to(elm_asset_route))
             .route("/app.js", web::get().to(js_asset_route))
             .default_service(web::get().to(frontend))
     })
-    .bind(model.get_ip_address())?
+    .bind(ip_address)
+    .map_err(|err| err.to_string())?
     .run()
     .await
+    .map_err(|err| err.to_string())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,12 +123,12 @@ fn read_js_file() -> std::io::Result<String> {
 ////////////////////////////////////////////////////////////////////////////////
 
 async fn elm_asset_route(model: web::Data<Model>) -> HttpResponse {
-    match model.get_ref() {
-        Model::Dev(_) => match read_elm_file() {
+    match &model.get_ref().prod_model {
+        None => match read_elm_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
             Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
         },
-        Model::Prod(prod_model) => match &prod_model.elm_file {
+        Some(prod_model) => match &prod_model.elm_file {
             Ok(file_str) => HttpResponse::Ok().body(file_str),
             Err(_) => HttpResponse::InternalServerError().body("elm file was missing"),
         },
@@ -140,12 +136,12 @@ async fn elm_asset_route(model: web::Data<Model>) -> HttpResponse {
 }
 
 async fn js_asset_route(model: web::Data<Model>) -> HttpResponse {
-    match model.get_ref() {
-        Model::Dev(_) => match read_js_file() {
+    match &model.get_ref().prod_model {
+        None => match read_js_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
             Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
         },
-        Model::Prod(prod_model) => match &prod_model.js_file {
+        Some(prod_model) => match &prod_model.js_file {
             Ok(file_str) => HttpResponse::Ok().body(file_str),
             Err(_) => HttpResponse::InternalServerError().body("elm file was missing"),
         },
@@ -175,24 +171,21 @@ async fn frontend() -> HttpResponse {
 ////////////////////////////////////////////////////////////////////////////////
 
 fn write_frontend_api_code(model: &Model) -> std::io::Result<()> {
-    let url = match model {
-        Model::Dev(_) => {
-            let localhost_str = "localhost";
-
+    let url = match &model.prod_model {
+        None => {
             let mut buf = String::new();
 
-            buf.push_str(localhost_str);
-            buf.push(':');
-            buf.push_str(LOCAL_PORT.to_string().as_str());
+            buf.push_str("localhost:");
+            buf.push_str(model.port_number.to_string().as_str());
 
             buf
         }
-        Model::Prod(prod_model) => {
+        Some(_) => {
             let mut buf = String::new();
 
-            buf.push_str(prod_model.ip_address.as_str());
+            buf.push_str(model.ip_address.as_str());
             buf.push(':');
-            buf.push_str(LOCAL_PORT.to_string().as_str());
+            buf.push_str(model.port_number.to_string().as_str());
 
             buf
         }
@@ -250,8 +243,6 @@ fn clear_terminal() {
 ////////////////////////////////////////////////////////////////////////////////
 // DEV //
 ////////////////////////////////////////////////////////////////////////////////
-
-const LOCAL_PORT: i64 = 8080;
 
 fn watch_and_recompile_ui() {
     let (sender, receiver) = channel();

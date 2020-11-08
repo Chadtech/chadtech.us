@@ -5,6 +5,7 @@ module Page.Blog exposing
     , getSession
     , incomingPortsListener
     , init
+    , setLayout
     , update
     , view
     )
@@ -12,7 +13,9 @@ module Page.Blog exposing
 import Layout exposing (Layout)
 import Ports.Incoming
 import Session exposing (Session)
-import View.Row exposing (Row)
+import Style.Color as Color
+import Style.Size as Size
+import View.Cell as Cell exposing (Cell)
 
 
 
@@ -60,6 +63,11 @@ getLayout model =
     model.layout
 
 
+setLayout : Layout -> Model -> Model
+setLayout layout model =
+    { model | layout = layout }
+
+
 
 --------------------------------------------------------------------------------
 -- UPDATE --
@@ -79,9 +87,31 @@ update msg model =
 --------------------------------------------------------------------------------
 
 
-view : Model -> List (Row Msg)
+view : Model -> List (Cell Msg)
 view model =
-    []
+    [ blogSection
+    , blogNav
+    ]
+
+
+blogSection : Cell Msg
+blogSection =
+    Cell.fromHtml []
+        |> indentBox
+
+
+blogNav : Cell Msg
+blogNav =
+    Cell.fromHtml []
+        |> indentBox
+        |> Cell.withExactWidth (Size.extraLarge 5)
+
+
+indentBox : Cell msg -> Cell msg
+indentBox cell =
+    cell
+        |> Cell.indent
+        |> Cell.withBackgroundColor Color.background1
 
 
 
