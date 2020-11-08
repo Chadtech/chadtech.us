@@ -157,9 +157,9 @@ subscriptions keyCmds =
         (Decode.field "metaKey" Decode.bool
             |> Decode.map Command
         )
-        (Decode.field "shift" Decode.bool
+        (Decode.field "shiftKey" Decode.bool
             |> Decode.map Shift
         )
         (Decode.field "key" Decode.string)
         |> Decode.andThen fromMaybe
-        |> Browser.Events.onMouseDown
+        |> Browser.Events.onKeyDown
