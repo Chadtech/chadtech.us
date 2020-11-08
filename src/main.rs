@@ -56,11 +56,17 @@ struct ProdModel {
 async fn main() -> Result<(), String> {
     let model = Model::init()?;
 
-    write_frontend_api_code(&model).map_err(|err| err.to_string())?;
-    compile_elm();
-    compile_js();
+    let dev_mode = if let None = model.prod_model {
+        true
+    } else {
+        false
+    };
 
-    if let None = model.prod_model {
+    write_frontend_api_code(&model).map_err(|err| err.to_string())?;
+    compile_elm(dev_mode)?;
+    compile_js(dev_mode)?;
+
+    if dev_mode {
         thread::spawn(move || {
             watch_and_recompile_ui();
         });
@@ -68,12 +74,13 @@ async fn main() -> Result<(), String> {
 
     let mut socket_address = String::new();
 
-    if let None = model.prod_model {
-        socket_address.push_str("localhost:");
+    if dev_mode {
+        socket_address.push_str("localhost");
     } else {
         socket_address.push_str(model.ip_address.as_str());
     }
 
+    socket_address.push_str(":");
     socket_address.push_str(model.port_number.to_string().as_str());
 
     HttpServer::new(move || {
@@ -225,23 +232,54 @@ asString =
     )
 }
 
-fn compile_elm() {
-    clear_terminal();
+fn compile_elm(dev_mode: bool) -> Result<(), String> {
+    if dev_mode {
+        clear_terminal();
 
-    Command::new("elm")
-        .current_dir("./ui")
-        .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
-        .spawn()
-        .expect("Elm failed to compile");
+        Command::new("elm")
+            .current_dir("./ui")
+            .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
+            .spawn()
+            .map(|_| ())
+            .map_err(|err| err.to_string())
+    } else {
+        let output_result = Command::new("elm")
+            .current_dir("./ui")
+            .args(&[
+                "make",
+                "./src/Main.elm",
+                "--output=./public/elm.js",
+                "--optimize",
+            ])
+            .output();
+
+        match output_result {
+            Ok(output) => {
+                if output.status.success() {
+                    Ok(())
+                } else {
+                    let mut buf = "failed to compiled Elm with status code : ".to_string();
+
+                    buf.push_str(output.status.to_string().as_str());
+
+                    Err(buf)
+                }
+            }
+            Err(err) => Err(err.to_string()),
+        }
+    }
 }
 
-fn compile_js() {
-    clear_terminal();
+fn compile_js(dev_mode: bool) -> Result<(), String> {
+    if dev_mode {
+        clear_terminal();
+    };
 
     Command::new("cp")
         .args(&[ui_src("app.js"), ui_public("app.js")])
         .spawn()
-        .expect("Failed to move app.js into ./public");
+        .map(|_| ())
+        .map_err(|err| err.to_string())
 }
 
 fn clear_terminal() {
@@ -262,20 +300,26 @@ fn watch_and_recompile_ui() {
     watcher.watch("./ui/src", RecursiveMode::Recursive).unwrap();
 
     loop {
-        match receiver.recv() {
+        let result = match receiver.recv() {
             Ok(event) => match event.path {
-                None => {}
+                None => Ok(()),
                 Some(filepath) => {
                     let file_extension = filepath.extension().and_then(|ext| ext.to_str());
 
                     match file_extension {
-                        Some("elm") => compile_elm(),
-                        Some("js") => compile_js(),
-                        _ => {}
+                        Some("elm") => compile_elm(true),
+                        Some("js") => compile_js(true),
+                        _ => Ok(()),
                     }
                 }
             },
-            Err(e) => println!("watch error: {:?}", e),
-        }
+            Err(err) => Err(err.to_string()),
+        };
+
+        if let Err(err) = result {
+            panic!(err);
+        };
+
+        ()
     }
 }
