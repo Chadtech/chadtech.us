@@ -4,7 +4,9 @@ import Browser exposing (UrlRequest)
 import Browser.Navigation as Nav
 import Document exposing (Document)
 import Json.Decode as Decode exposing (Decoder)
+import KeyCmd exposing (KeyCmd)
 import Layout exposing (Layout)
+import Page.Admin as Admin
 import Page.Blog as Blog
 import Ports.Incoming
 import Route exposing (Route)
@@ -12,7 +14,6 @@ import Session exposing (Session)
 import Url exposing (Url)
 import Util.Cmd as CmdUtil
 import View.Cell as Cell exposing (Cell)
-import View.Row as Row exposing (Row)
 
 
 
@@ -42,6 +43,7 @@ main =
 type Model
     = PageNotFound Session Layout
     | Blog Blog.Model
+    | Admin Admin.Model
 
 
 type Msg
@@ -49,6 +51,8 @@ type Msg
     | UrlRequested UrlRequest
     | RouteChanged (Maybe Route)
     | BlogMsg Blog.Msg
+    | AdminMsg Admin.Msg
+    | OpenAdminPanelPressed
 
 
 
@@ -87,6 +91,9 @@ getSession model =
         Blog subModel ->
             Blog.getSession subModel
 
+        Admin subModel ->
+            Admin.getSession subModel
+
 
 getLayout : Model -> Layout
 getLayout model =
@@ -97,6 +104,9 @@ getLayout model =
         Blog subModel ->
             Blog.getLayout subModel
 
+        Admin subModel ->
+            Admin.getLayout subModel
+
 
 setLayout : Layout -> Model -> Model
 setLayout layout model =
@@ -106,6 +116,9 @@ setLayout layout model =
 
         Blog subModel ->
             Blog <| Blog.setLayout layout subModel
+
+        Admin subModel ->
+            Admin <| Admin.setLayout layout subModel
 
 
 mapLayout : (Layout -> Layout) -> Model -> Model
@@ -125,6 +138,10 @@ update msg model =
         session : Session
         session =
             getSession model
+
+        layout : Layout
+        layout =
+            getLayout model
     in
     case msg of
         MsgDecodeFailed _ ->
@@ -161,6 +178,20 @@ update msg model =
                 _ ->
                     model
                         |> CmdUtil.withNoCmd
+
+        OpenAdminPanelPressed ->
+            Admin.init session layout
+                |> Admin
+                |> CmdUtil.withNoCmd
+
+        AdminMsg subMsg ->
+            case model of
+                Admin subModel ->
+                    Admin.update subMsg subModel
+                        |> CmdUtil.mapBoth Admin AdminMsg
+
+                _ ->
+                    model |> CmdUtil.withNoCmd
 
 
 superHandleRouteChange : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -221,6 +252,10 @@ view model =
                     Blog.view subModel
                         |> List.map (Cell.map BlogMsg)
 
+                Admin subModel ->
+                    Admin.view subModel
+                        |> List.map (Cell.map AdminMsg)
+
         layout : Layout
         layout =
             getLayout model
@@ -237,9 +272,21 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Ports.Incoming.subscription
+    [ Ports.Incoming.subscription
         MsgDecodeFailed
         (incomingPortsListeners model)
+    , KeyCmd.subscriptions
+        keyCmds
+    ]
+        |> Sub.batch
+
+
+keyCmds : List (KeyCmd Msg)
+keyCmds =
+    [ KeyCmd.a OpenAdminPanelPressed
+        |> KeyCmd.shift
+        |> KeyCmd.cmd
+    ]
 
 
 incomingPortsListeners : Model -> Ports.Incoming.Listener Msg
@@ -250,3 +297,6 @@ incomingPortsListeners model =
 
         Blog _ ->
             Ports.Incoming.map BlogMsg Blog.incomingPortsListener
+
+        Admin subModel ->
+            Ports.Incoming.map AdminMsg Admin.incomingPortsListener

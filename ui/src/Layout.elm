@@ -22,7 +22,8 @@ import View.Row as Row exposing (Row)
 
 
 type alias Layout =
-    { activeNav : Maybe NavItem }
+    { activeNav : Maybe NavItem
+    }
 
 
 type NavItem
