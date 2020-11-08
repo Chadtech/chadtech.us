@@ -26,8 +26,6 @@ impl Flags {
 
         let mut dev_mode = false;
 
-        let mut port_number = 8080;
-
         for arg in args {
             match arg.find("=") {
                 None => match arg.as_str() {
@@ -47,9 +45,10 @@ impl Flags {
                     }
                 },
                 Some(index) => {
-                    let (key, mut value) = arg.split_at(index);
+                    let (key, value_str) = arg.split_at(index);
 
-                    value.to_string().remove(0);
+                    let mut value = value_str.to_string();
+                    value.remove(0);
 
                     match key {
                         "ip_address" => {
@@ -88,6 +87,7 @@ impl Flags {
 
         let ip_address = maybe_ip_address?;
         let admin_password = maybe_admin_password?;
+        let port_number = maybe_port?;
 
         Ok(Flags {
             ip_address,
