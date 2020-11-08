@@ -32,6 +32,7 @@ impl Flags {
                     "dev" => {
                         maybe_ip_address = Ok("127.0.0.1".to_string());
                         maybe_admin_password = Ok("password".to_string());
+                        maybe_port = Ok(8080);
                         dev_mode = true;
                     }
 
@@ -79,8 +80,6 @@ impl Flags {
                             return Err(buf);
                         }
                     }
-                    println!("KEY {}", key);
-                    println!("VALUE {}", value);
                 }
             }
         }
