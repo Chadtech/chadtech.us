@@ -66,15 +66,25 @@ async fn main() -> Result<(), String> {
         });
     };
 
-    let ip_address = model.ip_address.clone();
+    let mut socket_address = String::new();
+
+    if let None = model.prod_model {
+        socket_address.push_str("localhost:");
+    } else {
+        socket_address.push_str(model.ip_address.as_str());
+    }
+
+    socket_address.push_str(model.port_number.to_string().as_str());
+
     HttpServer::new(move || {
+        let model = model.clone();
         App::new()
-            .data(model.clone())
+            .data(model)
             .route("/elm.js", web::get().to(elm_asset_route))
             .route("/app.js", web::get().to(js_asset_route))
             .default_service(web::get().to(frontend))
     })
-    .bind(ip_address)
+    .bind(socket_address)
     .map_err(|err| err.to_string())?
     .run()
     .await
