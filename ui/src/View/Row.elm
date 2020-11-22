@@ -3,6 +3,7 @@ module View.Row exposing
     , fillVerticalSpace
     , fromCell
     , fromCells
+    , fromString
     , map
     , toCell
     , toHtml
@@ -62,6 +63,11 @@ toCell rows =
     rows
         |> List.map toHtml
         |> Cell.fromHtml
+
+
+fromString : String -> Row msg
+fromString str =
+    fromCell <| Cell.fromString str
 
 
 map : (a -> msg) -> Row a -> Row msg

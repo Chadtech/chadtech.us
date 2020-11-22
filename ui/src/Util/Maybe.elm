@@ -1,7 +1,18 @@
 module Util.Maybe exposing
     ( lazyWithDefault
     , orLazy
+    , toList
     )
+
+
+toList : Maybe a -> List a
+toList maybe =
+    case maybe of
+        Just a ->
+            [ a ]
+
+        Nothing ->
+            []
 
 
 lazyWithDefault : (() -> a) -> Maybe a -> a

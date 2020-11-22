@@ -7,6 +7,7 @@ module Layout exposing
 
 import Document exposing (Document)
 import Route exposing (Route)
+import Session exposing (Session)
 import Style.Color as Color
 import Style.Padding as Padding
 import Style.Size as Size exposing (Size)
@@ -30,6 +31,7 @@ type NavItem
     = Blog
     | Twitter
     | Github
+    | Admin
 
 
 
@@ -43,11 +45,12 @@ allNavItems =
     [ Blog
     , Twitter
     , Github
+    , Admin
     ]
 
 
-navigation : Maybe NavItem -> Cell msg
-navigation activeNavItem =
+navigation : Session -> Maybe NavItem -> Cell msg
+navigation session activeNavItem =
     let
         toLabel : NavItem -> String
         toLabel navItem =
@@ -60,6 +63,9 @@ navigation activeNavItem =
 
                 Github ->
                     "Github"
+
+                Admin ->
+                    "Admin"
 
         withClickHandling : NavItem -> Button msg -> Button msg
         withClickHandling navItem =
@@ -75,6 +81,9 @@ navigation activeNavItem =
                     Button.withLinkToNewWindow
                         "https://www.github.com/chadtech"
 
+                Admin ->
+                    Button.withLink Route.admin
+
         navItemView : NavItem -> Row msg
         navItemView navItem =
             Button.fromLabel (toLabel navItem)
@@ -84,8 +93,24 @@ navigation activeNavItem =
                     Button.active
                 |> Button.toCell
                 |> Row.fromCell
+
+        showNavItem : NavItem -> Bool
+        showNavItem navItem =
+            case navItem of
+                Blog ->
+                    True
+
+                Twitter ->
+                    True
+
+                Github ->
+                    True
+
+                Admin ->
+                    Session.adminIsOn session
     in
     allNavItems
+        |> List.filter showNavItem
         |> List.map navItemView
         |> Row.withSpaceBetween gapSize
         |> Row.toCell
@@ -117,6 +142,9 @@ routeToNavItem route =
         Route.Blog ->
             Blog
 
+        Route.Admin ->
+            Admin
+
 
 setActiveRoute : Maybe NavItem -> Layout -> Layout
 setActiveRoute maybeNavItem layout =
@@ -140,10 +168,10 @@ init route =
     { activeNav = Maybe.map routeToNavItem route }
 
 
-view : Layout -> List (Cell msg) -> Document msg
-view layout body =
+view : Session -> Layout -> List (Cell msg) -> Document msg
+view session layout body =
     [ headerRow
-    , (navigation layout.activeNav :: body)
+    , (navigation session layout.activeNav :: body)
         |> Cell.withSpaceBetween gapSize
         |> Row.fromCells
         |> Row.fillVerticalSpace

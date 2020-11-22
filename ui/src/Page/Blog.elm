@@ -6,6 +6,7 @@ module Page.Blog exposing
     , incomingPortsListener
     , init
     , setLayout
+    , setSession
     , update
     , view
     )
@@ -51,6 +52,11 @@ init session layout =
 --------------------------------------------------------------------------------
 -- API --
 --------------------------------------------------------------------------------
+
+
+setSession : Session -> Model -> Model
+setSession session model =
+    { model | session = session }
 
 
 getSession : Model -> Session

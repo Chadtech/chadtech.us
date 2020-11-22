@@ -6,6 +6,7 @@ module Page.Admin exposing
     , incomingPortsListener
     , init
     , setLayout
+    , setSession
     , update
     , view
     )
@@ -14,6 +15,7 @@ import Layout exposing (Layout)
 import Ports.Incoming
 import Session exposing (Session)
 import View.Cell as Cell exposing (Cell)
+import View.Row as Row
 
 
 
@@ -49,6 +51,11 @@ init session layout =
 --------------------------------------------------------------------------------
 -- API --
 --------------------------------------------------------------------------------
+
+
+setSession : Session -> Model -> Model
+setSession session model =
+    { model | session = session }
 
 
 getSession : Model -> Session
@@ -87,7 +94,10 @@ update msg model =
 
 view : Model -> List (Cell Msg)
 view model =
-    [ Cell.fromString "Admin Panel" ]
+    [ Row.toCell
+        [ Row.fromString "Admin Panel"
+        ]
+    ]
 
 
 

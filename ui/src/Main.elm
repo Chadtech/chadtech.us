@@ -22,16 +22,48 @@ import View.Cell as Cell exposing (Cell)
 --------------------------------------------------------------------------------
 
 
-main : Program Decode.Value Model Msg
+main : Program Decode.Value (Result Error Model) Msg
 main =
     { init = init
-    , view = Document.toBrowserDocument << view
-    , update = update
-    , subscriptions = subscriptions
+    , view = Document.toBrowserDocument << superView
+    , update = superUpdate
+    , subscriptions = superSubscriptions
     , onUrlRequest = UrlRequested
     , onUrlChange = RouteChanged << Route.fromUrl
     }
         |> Browser.application
+
+
+superSubscriptions : Result Error Model -> Sub Msg
+superSubscriptions result =
+    case result of
+        Ok model ->
+            subscriptions model
+
+        Err _ ->
+            Sub.none
+
+
+superView : Result Error Model -> Document Msg
+superView result =
+    case result of
+        Ok model ->
+            view model
+
+        Err error ->
+            Document.fromBody
+                []
+
+
+superUpdate : Msg -> Result Error Model -> ( Result Error Model, Cmd Msg )
+superUpdate msg result =
+    case result of
+        Ok model ->
+            update msg model
+                |> Tuple.mapFirst Ok
+
+        Err error ->
+            ( Err error, Cmd.none )
 
 
 
@@ -53,6 +85,11 @@ type Msg
     | BlogMsg Blog.Msg
     | AdminMsg Admin.Msg
     | OpenAdminPanelPressed
+    | SessionMsg Session.Msg
+
+
+type Error
+    = SessionFailedToInit Decode.Error
 
 
 
@@ -61,19 +98,21 @@ type Msg
 --------------------------------------------------------------------------------
 
 
-init : Decode.Value -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init : Decode.Value -> Url -> Nav.Key -> ( Result Error Model, Cmd Msg )
 init json url navKey =
-    let
-        session : Session
-        session =
-            Session.init navKey
+    case Session.init json navKey of
+        Ok session ->
+            let
+                route : Maybe Route
+                route =
+                    Route.fromUrl url
+            in
+            PageNotFound session (Layout.init route)
+                |> superHandleRouteChange route
+                |> Tuple.mapFirst Ok
 
-        route : Maybe Route
-        route =
-            Route.fromUrl url
-    in
-    PageNotFound session (Layout.init route)
-        |> superHandleRouteChange route
+        Err error ->
+            ( Err <| SessionFailedToInit error, Cmd.none )
 
 
 
@@ -93,6 +132,24 @@ getSession model =
 
         Admin subModel ->
             Admin.getSession subModel
+
+
+setSession : Session -> Model -> Model
+setSession session model =
+    case model of
+        PageNotFound _ layout ->
+            PageNotFound session layout
+
+        Blog subModel ->
+            Blog <| Blog.setSession session subModel
+
+        Admin subModel ->
+            Admin <| Admin.setSession session subModel
+
+
+mapSession : (Session -> Session) -> Model -> Model
+mapSession f model =
+    setSession (f <| getSession model) model
 
 
 getLayout : Model -> Layout
@@ -143,7 +200,7 @@ update msg model =
         layout =
             getLayout model
     in
-    case msg of
+    case Debug.log "MSG" msg of
         MsgDecodeFailed _ ->
             model
                 |> CmdUtil.withNoCmd
@@ -180,9 +237,16 @@ update msg model =
                         |> CmdUtil.withNoCmd
 
         OpenAdminPanelPressed ->
-            Admin.init session layout
-                |> Admin
-                |> CmdUtil.withNoCmd
+            let
+                ( newSession, cmd ) =
+                    Session.turnOnAdminMode session
+            in
+            ( setSession newSession model
+            , Cmd.batch
+                [ cmd
+                , Session.goTo session Route.admin
+                ]
+            )
 
         AdminMsg subMsg ->
             case model of
@@ -192,6 +256,11 @@ update msg model =
 
                 _ ->
                     model |> CmdUtil.withNoCmd
+
+        SessionMsg subMsg ->
+            ( mapSession (Session.update subMsg) model
+            , Cmd.none
+            )
 
 
 superHandleRouteChange : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -211,11 +280,15 @@ handleRouteChange maybeRoute model =
         layout : Layout
         layout =
             getLayout model
+
+        pageNotFound : () -> ( Model, Cmd msg )
+        pageNotFound _ =
+            PageNotFound session layout
+                |> CmdUtil.withNoCmd
     in
     case maybeRoute of
         Nothing ->
-            PageNotFound session layout
-                |> CmdUtil.withNoCmd
+            pageNotFound ()
 
         Just route ->
             let
@@ -231,6 +304,20 @@ handleRouteChange maybeRoute model =
 
                 Route.Blog ->
                     initBlog ()
+
+                Route.Admin ->
+                    case model of
+                        Admin _ ->
+                            ( model, Cmd.none )
+
+                        _ ->
+                            if Session.adminIsOn session then
+                                Admin.init session layout
+                                    |> Admin
+                                    |> CmdUtil.withNoCmd
+
+                            else
+                                pageNotFound ()
 
 
 
@@ -259,9 +346,13 @@ view model =
         layout : Layout
         layout =
             getLayout model
+
+        session : Session
+        session =
+            getSession model
     in
     body
-        |> Layout.view layout
+        |> Layout.view session layout
 
 
 
@@ -291,12 +382,21 @@ keyCmds =
 
 incomingPortsListeners : Model -> Ports.Incoming.Listener Msg
 incomingPortsListeners model =
-    case model of
-        PageNotFound _ _ ->
-            Ports.Incoming.none
+    let
+        pageListener : Ports.Incoming.Listener Msg
+        pageListener =
+            case model of
+                PageNotFound _ _ ->
+                    Ports.Incoming.none
 
-        Blog _ ->
-            Ports.Incoming.map BlogMsg Blog.incomingPortsListener
+                Blog _ ->
+                    Ports.Incoming.map BlogMsg Blog.incomingPortsListener
 
-        Admin subModel ->
-            Ports.Incoming.map AdminMsg Admin.incomingPortsListener
+                Admin _ ->
+                    Ports.Incoming.map AdminMsg Admin.incomingPortsListener
+    in
+    [ Session.listener
+        |> Ports.Incoming.map SessionMsg
+    , pageListener
+    ]
+        |> Ports.Incoming.batch

@@ -1,5 +1,6 @@
 module Route exposing
     ( Route(..)
+    , admin
     , blog
     , fromUrl
     , href
@@ -22,6 +23,7 @@ import Url.Parser as P exposing ((</>), Parser)
 type Route
     = Landing
     | Blog
+    | Admin
 
 
 
@@ -35,6 +37,7 @@ parser =
     [ P.map Landing P.top
     , P.map Blog <| P.s blogPath
     , P.map Blog <| P.s "#" </> P.s blogPath
+    , P.map Admin <| P.s adminPath
     ]
         |> P.oneOf
 
@@ -42,6 +45,11 @@ parser =
 blogPath : String
 blogPath =
     "blog"
+
+
+adminPath : String
+adminPath =
+    "admin"
 
 
 
@@ -61,6 +69,9 @@ toString route =
 
                 Blog ->
                     [ blogPath ]
+
+                Admin ->
+                    [ adminPath ]
     in
     UrlBuilder.relative path []
 
@@ -68,6 +79,11 @@ toString route =
 blog : Route
 blog =
     Blog
+
+
+admin : Route
+admin =
+    Admin
 
 
 fromUrl : Url -> Maybe Route

@@ -1,4 +1,25 @@
-var app = Elm.Main.init();
+var storageKey = "chadtechus__key"
+
+function getStorage() {
+    var storage = JSON.parse(localStorage.getItem(storageKey) || "{})");
+    return storage;
+}
+
+function setStorage(payload) {
+    var storage = getStorage();
+
+    storage[payload.key] = payload.value;
+
+    localStorage.setItem(storageKey, JSON.stringify(storage));
+
+    toElm("storage updated", getStorage());
+}
+
+var app = Elm.Main.init({
+    flags: {
+        storage: getStorage()
+    }
+});
 
 function toElm(type, body) {
 	app.ports.fromJs.send({
@@ -7,13 +28,8 @@ function toElm(type, body) {
 	});
 }
 
-function square(n) {
-	toElm("square computed", n * n);
-}
-
 var actions = {
-	consoleLog: console.log,
-	square: square
+	setStorage: setStorage
 }
 
 function jsMsgHandler(msg) {
@@ -25,5 +41,5 @@ function jsMsgHandler(msg) {
 	action(msg.body);
 }
 
-//app.ports.toJs.subscribe(jsMsgHandler)
+app.ports.toJs.subscribe(jsMsgHandler)
 
