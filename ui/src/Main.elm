@@ -200,7 +200,7 @@ update msg model =
         layout =
             getLayout model
     in
-    case Debug.log "MSG" msg of
+    case msg of
         MsgDecodeFailed _ ->
             model
                 |> CmdUtil.withNoCmd
