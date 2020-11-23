@@ -3,8 +3,8 @@ module Storage exposing (Storage, decoder, get, listener, set)
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Ports.Incoming
-import Ports.Outgoing
+import Ports.FromJs as FromJs
+import Ports.ToJs as ToJs
 
 
 
@@ -47,21 +47,18 @@ get key valueDecoder (Storage storage) =
 
 set : String -> Encode.Value -> Cmd msg
 set key value =
-    Ports.Outgoing.fromType_ "setStorage"
-        |> Ports.Outgoing.fieldsBody
+    ToJs.type_ "setStorage"
+        |> ToJs.fieldsBody
             [ Tuple.pair "value" value
             , Tuple.pair "key" <| Encode.string key
             ]
-        |> Ports.Outgoing.send
+        |> ToJs.send
 
 
 decoder : Decoder Storage
 decoder =
-    [ Decode.dict Decode.value
+    Decode.dict Decode.value
         |> Decode.map Storage
-    , Decode.null empty
-    ]
-        |> Decode.oneOf
 
 
 
@@ -70,7 +67,7 @@ decoder =
 --------------------------------------------------------------------------------
 
 
-listener : (Storage -> msg) -> Ports.Incoming.Listener msg
+listener : (Storage -> msg) -> FromJs.Listener msg
 listener toMsg =
-    Ports.Incoming.listen "storage updated"
+    FromJs.listen "storage updated"
         (Decode.map toMsg decoder)

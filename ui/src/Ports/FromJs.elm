@@ -1,4 +1,4 @@
-port module Ports.Incoming exposing
+port module Ports.FromJs exposing
     ( Error
     , Listener
     , batch

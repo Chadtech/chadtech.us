@@ -1,10 +1,10 @@
-port module Ports.Outgoing exposing
+port module Ports.ToJs exposing
     ( Msg
     , fieldsBody
-    , fromType_
     , intBody
     , send
     , stringBody
+    , type_
     )
 
 import Json.Encode as Encode
@@ -28,9 +28,9 @@ type alias Msg =
 --------------------------------------------------------------------------------
 
 
-fromType_ : String -> Msg
-fromType_ type_ =
-    { type_ = type_
+type_ : String -> Msg
+type_ t =
+    { type_ = t
     , body = Encode.null
     }
 

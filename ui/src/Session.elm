@@ -13,7 +13,7 @@ module Session exposing
 import Browser.Navigation as Nav
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Ports.Incoming
+import Ports.FromJs as FromJs
 import Route exposing (Route)
 import Storage exposing (Storage)
 import Util.Maybe as MaybeUtil
@@ -63,7 +63,12 @@ init json navKey =
         fromFlags flags =
             let
                 ( admin, adminError ) =
-                    case Storage.get adminModeKey Decode.string flags.storage of
+                    case
+                        Storage.get
+                            adminModeKey
+                            Decode.string
+                            flags.storage
+                    of
                         Ok (Just password) ->
                             ( AdminMode__On { password = password }
                             , Nothing
@@ -84,7 +89,9 @@ init json navKey =
             }
     in
     Decode.decodeValue
-        (Decode.map Flags Storage.decoder)
+        (Decode.map Flags
+            (Decode.field "storage" Storage.decoder)
+        )
         json
         |> Result.map fromFlags
 
@@ -157,6 +164,6 @@ goTo session route =
 ---------------------------------------------------------------
 
 
-listener : Ports.Incoming.Listener Msg
+listener : FromJs.Listener Msg
 listener =
     Storage.listener StorageUpdated

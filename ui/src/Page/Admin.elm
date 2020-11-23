@@ -12,7 +12,7 @@ module Page.Admin exposing
     )
 
 import Layout exposing (Layout)
-import Ports.Incoming
+import Ports.FromJs as FromJs
 import Session exposing (Session)
 import View.Cell as Cell exposing (Cell)
 import View.Row as Row
@@ -106,6 +106,6 @@ view model =
 --------------------------------------------------------------------------------
 
 
-incomingPortsListener : Ports.Incoming.Listener Msg
+incomingPortsListener : FromJs.Listener Msg
 incomingPortsListener =
-    Ports.Incoming.none
+    FromJs.none

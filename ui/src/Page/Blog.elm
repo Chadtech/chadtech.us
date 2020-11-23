@@ -12,7 +12,7 @@ module Page.Blog exposing
     )
 
 import Layout exposing (Layout)
-import Ports.Incoming
+import Ports.FromJs as FromJs
 import Session exposing (Session)
 import Style.Color as Color
 import Style.Size as Size
@@ -126,6 +126,6 @@ indentBox cell =
 --------------------------------------------------------------------------------
 
 
-incomingPortsListener : Ports.Incoming.Listener Msg
+incomingPortsListener : FromJs.Listener Msg
 incomingPortsListener =
-    Ports.Incoming.none
+    FromJs.none

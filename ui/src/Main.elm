@@ -8,7 +8,7 @@ import KeyCmd exposing (KeyCmd)
 import Layout exposing (Layout)
 import Page.Admin as Admin
 import Page.Blog as Blog
-import Ports.Incoming
+import Ports.FromJs as FromJs
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
@@ -79,7 +79,7 @@ type Model
 
 
 type Msg
-    = MsgDecodeFailed Ports.Incoming.Error
+    = MsgDecodeFailed FromJs.Error
     | UrlRequested UrlRequest
     | RouteChanged (Maybe Route)
     | BlogMsg Blog.Msg
@@ -363,7 +363,7 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    [ Ports.Incoming.subscription
+    [ FromJs.subscription
         MsgDecodeFailed
         (incomingPortsListeners model)
     , KeyCmd.subscriptions
@@ -380,23 +380,23 @@ keyCmds =
     ]
 
 
-incomingPortsListeners : Model -> Ports.Incoming.Listener Msg
+incomingPortsListeners : Model -> FromJs.Listener Msg
 incomingPortsListeners model =
     let
-        pageListener : Ports.Incoming.Listener Msg
+        pageListener : FromJs.Listener Msg
         pageListener =
             case model of
                 PageNotFound _ _ ->
-                    Ports.Incoming.none
+                    FromJs.none
 
                 Blog _ ->
-                    Ports.Incoming.map BlogMsg Blog.incomingPortsListener
+                    FromJs.map BlogMsg Blog.incomingPortsListener
 
                 Admin _ ->
-                    Ports.Incoming.map AdminMsg Admin.incomingPortsListener
+                    FromJs.map AdminMsg Admin.incomingPortsListener
     in
     [ Session.listener
-        |> Ports.Incoming.map SessionMsg
+        |> FromJs.map SessionMsg
     , pageListener
     ]
-        |> Ports.Incoming.batch
+        |> FromJs.batch

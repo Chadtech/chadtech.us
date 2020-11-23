@@ -2,6 +2,7 @@ var storageKey = "chadtechus__key"
 
 function getStorage() {
     var storage = JSON.parse(localStorage.getItem(storageKey) || "{})");
+    console.log(storage);
     return storage;
 }
 
@@ -30,7 +31,7 @@ function toElm(type, body) {
 
 var actions = {
 	setStorage: setStorage
-}
+};
 
 function jsMsgHandler(msg) {
 	var action = actions[msg.type];
