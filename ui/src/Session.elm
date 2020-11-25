@@ -1,18 +1,18 @@
 module Session exposing
     ( Msg
     , Session
-    , adminIsOn
+    , adminMode
     , goTo
     , init
     , listener
-    , setAdminPassword
+    , recordStorageDecodeError
     , turnOnAdminMode
     , update
     )
 
+import Admin
 import Browser.Navigation as Nav
 import Json.Decode as Decode
-import Json.Encode as Encode
 import Ports.FromJs as FromJs
 import Route exposing (Route)
 import Storage exposing (Storage)
@@ -27,7 +27,7 @@ import Util.Maybe as MaybeUtil
 
 type alias Session =
     { navKey : Nav.Key
-    , admin : AdminMode
+    , adminMode : Maybe String
     , storage : Storage
     , errors : List Error
     }
@@ -35,11 +35,7 @@ type alias Session =
 
 type Error
     = InitError Decode.Error
-
-
-type AdminMode
-    = AdminMode__Off
-    | AdminMode__On { password : String }
+    | StorageDecodeError Decode.Error
 
 
 type Msg
@@ -62,29 +58,17 @@ init json navKey =
         fromFlags : Flags -> Session
         fromFlags flags =
             let
-                ( admin, adminError ) =
-                    case
-                        Storage.get
-                            adminModeKey
-                            Decode.string
-                            flags.storage
-                    of
-                        Ok (Just password) ->
-                            ( AdminMode__On { password = password }
-                            , Nothing
-                            )
-
-                        Ok Nothing ->
-                            ( AdminMode__Off, Nothing )
-
-                        Err error ->
-                            ( AdminMode__Off, Just <| InitError error )
+                ( adminPassword, adminError ) =
+                    Admin.fromStorage flags.storage
             in
             { navKey = navKey
-            , admin = admin
+            , adminMode = adminPassword
             , storage = flags.storage
             , errors =
-                [ MaybeUtil.toList adminError ]
+                [ adminError
+                    |> Maybe.map InitError
+                    |> MaybeUtil.toList
+                ]
                     |> List.concat
             }
     in
@@ -102,14 +86,14 @@ init json navKey =
 ---------------------------------------------------------------
 
 
-adminModeKey : String
-adminModeKey =
-    "admin_mode"
-
-
 setStorage : Storage -> Session -> Session
 setStorage storage session =
     { session | storage = storage }
+
+
+recordError : Error -> Session -> Session
+recordError error session =
+    { session | errors = error :: session.errors }
 
 
 
@@ -131,26 +115,30 @@ update msg session =
 ---------------------------------------------------------------
 
 
-adminIsOn : Session -> Bool
-adminIsOn session =
-    session.admin /= AdminMode__Off
+recordStorageDecodeError : Maybe Decode.Error -> Session -> Session
+recordStorageDecodeError maybeError session =
+    case maybeError of
+        Just error ->
+            recordError (StorageDecodeError error) session
+
+        Nothing ->
+            session
+
+
+adminMode : Session -> Maybe String
+adminMode session =
+    session.adminMode
 
 
 turnOnAdminMode : Session -> ( Session, Cmd msg )
 turnOnAdminMode session =
-    ( { session | admin = AdminMode__On { password = "" } }
-    , Storage.set adminModeKey <| Encode.string ""
+    let
+        ( initValue, cmd ) =
+            Admin.init
+    in
+    ( { session | adminMode = Just initValue }
+    , cmd
     )
-
-
-setAdminPassword : String -> Session -> Session
-setAdminPassword str session =
-    case session.admin of
-        AdminMode__Off ->
-            session
-
-        AdminMode__On params ->
-            { session | admin = AdminMode__On { params | password = str } }
 
 
 goTo : Session -> Route -> Cmd msg

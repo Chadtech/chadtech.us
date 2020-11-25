@@ -311,7 +311,7 @@ handleRouteChange maybeRoute model =
                             ( model, Cmd.none )
 
                         _ ->
-                            if Session.adminIsOn session then
+                            if Session.adminMode session /= Nothing then
                                 Admin.init session layout
                                     |> Admin
                                     |> CmdUtil.withNoCmd

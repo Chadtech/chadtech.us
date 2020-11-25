@@ -11,11 +11,14 @@ module Page.Admin exposing
     , view
     )
 
+import Admin
 import Layout exposing (Layout)
 import Ports.FromJs as FromJs
 import Session exposing (Session)
+import Style.Size as Size
 import View.Cell as Cell exposing (Cell)
-import View.Row as Row
+import View.Row as Row exposing (Row)
+import View.TextField as TextField
 
 
 
@@ -27,11 +30,12 @@ import View.Row as Row
 type alias Model =
     { session : Session
     , layout : Layout
+    , adminPassword : String
     }
 
 
 type Msg
-    = Msg
+    = PasswordFieldUpdated String
 
 
 
@@ -42,8 +46,15 @@ type Msg
 
 init : Session -> Layout -> Model
 init session layout =
-    { session = session
+    let
+        ( adminPassword, maybeError ) =
+            Admin.fromStorage session.storage
+    in
+    { session =
+        session
+            |> Session.recordStorageDecodeError maybeError
     , layout = layout
+    , adminPassword = Maybe.withDefault "" adminPassword
     }
 
 
@@ -75,6 +86,17 @@ setLayout layout model =
 
 
 --------------------------------------------------------------------------------
+-- IMPLEMENTATION --
+--------------------------------------------------------------------------------
+
+
+setPasswordField : String -> Model -> Model
+setPasswordField newField model =
+    { model | adminPassword = newField }
+
+
+
+--------------------------------------------------------------------------------
 -- UPDATE --
 --------------------------------------------------------------------------------
 
@@ -82,7 +104,7 @@ setLayout layout model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Msg ->
+        PasswordFieldUpdated str ->
             ( model, Cmd.none )
 
 
@@ -94,10 +116,19 @@ update msg model =
 
 view : Model -> List (Cell Msg)
 view model =
-    [ Row.toCell
-        [ Row.fromString "Admin Panel"
+    [ Row.fromString "Admin Panel"
+    , Row.fromCells
+        [ Cell.fromString "Admin Password"
+            |> Cell.withExactWidth (Size.extraLarge 4)
+        , TextField.simple
+            model.adminPassword
+            PasswordFieldUpdated
+            |> TextField.toCell
         ]
     ]
+        |> Row.withSpaceBetween Size.medium
+        |> Row.toCell
+        |> List.singleton
 
 
 

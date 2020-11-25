@@ -107,7 +107,7 @@ navigation session activeNavItem =
                     True
 
                 Admin ->
-                    Session.adminIsOn session
+                    Session.adminMode session /= Nothing
     in
     allNavItems
         |> List.filter showNavItem
