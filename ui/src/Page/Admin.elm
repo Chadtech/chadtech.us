@@ -64,6 +64,11 @@ init session layout =
 --------------------------------------------------------------------------------
 
 
+mapSession : (Session -> Session) -> Model -> Model
+mapSession f model =
+    setSession (f <| getSession model) model
+
+
 setSession : Session -> Model -> Model
 setSession session model =
     { model | session = session }
@@ -105,7 +110,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         PasswordFieldUpdated str ->
-            ( model, Cmd.none )
+            ( model
+                |> setPasswordField str
+                |> mapSession (Session.setAdminPassword str)
+            , Admin.save str
+            )
 
 
 
@@ -120,10 +129,12 @@ view model =
     , Row.fromCells
         [ Cell.fromString "Admin Password"
             |> Cell.withExactWidth (Size.extraLarge 4)
+            |> Cell.verticallyCenterContent
         , TextField.simple
             model.adminPassword
             PasswordFieldUpdated
             |> TextField.toCell
+            |> Cell.withExactWidth (Size.extraLarge 5)
         ]
     ]
         |> Row.withSpaceBetween Size.medium

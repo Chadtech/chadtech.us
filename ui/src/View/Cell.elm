@@ -6,6 +6,7 @@ module View.Cell exposing
     , map
     , pad
     , toHtml
+    , verticallyCenterContent
     , withBackgroundColor
     , withExactWidth
     , withFontColor
@@ -37,6 +38,7 @@ type alias Cell msg =
     , indent : Bool
     , leftMargin : Maybe Size
     , backgroundColor : Maybe Color
+    , verticallyCenterContent : Bool
     }
 
 
@@ -49,6 +51,11 @@ type Width
 --------------------------------------------------------------------------------
 -- API --
 --------------------------------------------------------------------------------
+
+
+verticallyCenterContent : Cell msg -> Cell msg
+verticallyCenterContent cell =
+    { cell | verticallyCenterContent = True }
 
 
 fromString : String -> Cell msg
@@ -65,6 +72,7 @@ fromHtml html =
     , indent = False
     , leftMargin = Nothing
     , backgroundColor = Nothing
+    , verticallyCenterContent = False
     }
 
 
@@ -77,6 +85,7 @@ map toMsg cell =
     , indent = cell.indent
     , leftMargin = cell.leftMargin
     , backgroundColor = cell.backgroundColor
+    , verticallyCenterContent = cell.verticallyCenterContent
     }
 
 
@@ -153,6 +162,12 @@ toHtml cell =
             , CssUtil.fromMaybe
                 (Color.toCss >> Css.backgroundColor)
                 cell.backgroundColor
+            , CssUtil.when cell.verticallyCenterContent <|
+                Css.batch
+                    [ Css.justifyContent Css.center
+                    , Css.flexDirection Css.column
+                    , Css.displayFlex
+                    ]
             ]
     in
     H.node "cell"

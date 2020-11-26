@@ -6,6 +6,7 @@ module Session exposing
     , init
     , listener
     , recordStorageDecodeError
+    , setAdminPassword
     , turnOnAdminMode
     , update
     )
@@ -139,6 +140,11 @@ turnOnAdminMode session =
     ( { session | adminMode = Just initValue }
     , cmd
     )
+
+
+setAdminPassword : String -> Session -> Session
+setAdminPassword str session =
+    { session | adminMode = Just str }
 
 
 goTo : Session -> Route -> Cmd msg
