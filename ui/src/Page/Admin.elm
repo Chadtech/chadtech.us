@@ -3,6 +3,7 @@ module Page.Admin exposing
     , Msg
     , getLayout
     , getSession
+    , handleRouteChange
     , incomingPortsListener
     , init
     , setLayout
@@ -14,8 +15,11 @@ module Page.Admin exposing
 import Admin
 import Layout exposing (Layout)
 import Ports.FromJs as FromJs
+import Route
+import Route.Admin as AdminRoute exposing (Route)
 import Session exposing (Session)
 import Style.Size as Size
+import View.Button as Button
 import View.Cell as Cell exposing (Cell)
 import View.Row as Row exposing (Row)
 import View.TextField as TextField
@@ -31,11 +35,16 @@ type alias Model =
     { session : Session
     , layout : Layout
     , adminPassword : String
+    , navItem : NavItem
     }
 
 
 type Msg
     = PasswordFieldUpdated String
+
+
+type NavItem
+    = NavItem__NewYearsCards
 
 
 
@@ -44,8 +53,8 @@ type Msg
 --------------------------------------------------------------------------------
 
 
-init : Session -> Layout -> Model
-init session layout =
+init : Session -> Layout -> Route -> Model
+init session layout route =
     let
         ( adminPassword, maybeError ) =
             Admin.fromStorage session.storage
@@ -55,7 +64,19 @@ init session layout =
             |> Session.recordStorageDecodeError maybeError
     , layout = layout
     , adminPassword = Maybe.withDefault "" adminPassword
+    , navItem = routeToNavItem route
     }
+
+
+
+--------------------------------------------------------------------------------
+-- ROUTE HANDLING --
+--------------------------------------------------------------------------------
+
+
+handleRouteChange : Route -> Model -> Model
+handleRouteChange route =
+    setNavItem (routeToNavItem route)
 
 
 
@@ -95,9 +116,40 @@ setLayout layout model =
 --------------------------------------------------------------------------------
 
 
+navItemToRoute : NavItem -> Route
+navItemToRoute navItem =
+    case navItem of
+        NavItem__NewYearsCards ->
+            AdminRoute.NewYearsCards
+
+
+navItemToLabel : NavItem -> String
+navItemToLabel navItem =
+    case navItem of
+        NavItem__NewYearsCards ->
+            "New Years Cards"
+
+
 setPasswordField : String -> Model -> Model
 setPasswordField newField model =
     { model | adminPassword = newField }
+
+
+setNavItem : NavItem -> Model -> Model
+setNavItem navItem model =
+    { model | navItem = navItem }
+
+
+routeToNavItem : Route -> NavItem
+routeToNavItem route =
+    case route of
+        AdminRoute.NewYearsCards ->
+            NavItem__NewYearsCards
+
+
+navItems : List NavItem
+navItems =
+    [ NavItem__NewYearsCards ]
 
 
 
@@ -125,6 +177,31 @@ update msg model =
 
 view : Model -> List (Cell Msg)
 view model =
+    [ nav model.navItem
+    , body model
+    ]
+
+
+nav : NavItem -> Cell Msg
+nav activeNavItem =
+    let
+        navItemView : NavItem -> Row Msg
+        navItemView navItem =
+            Button.fromLabel
+                (navItemToLabel navItem)
+                |> Button.withLink
+                    (Route.fromAdminRoute <| navItemToRoute navItem)
+                |> Button.when (navItem == activeNavItem) Button.active
+                |> Button.toRow
+    in
+    navItems
+        |> List.map navItemView
+        |> Row.toCell
+        |> Cell.withExactWidth (Size.extraLarge 4)
+
+
+body : Model -> Cell Msg
+body model =
     [ Row.fromString "Admin Panel"
     , Row.fromCells
         [ Cell.fromString "Admin Password"
@@ -139,7 +216,6 @@ view model =
     ]
         |> Row.withSpaceBetween Size.medium
         |> Row.toCell
-        |> List.singleton
 
 
 

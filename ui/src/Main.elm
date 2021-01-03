@@ -305,14 +305,19 @@ handleRouteChange maybeRoute model =
                 Route.Blog ->
                     initBlog ()
 
-                Route.Admin ->
+                Route.Admin subRoute ->
                     case model of
-                        Admin _ ->
-                            ( model, Cmd.none )
+                        Admin subModel ->
+                            ( Admin.handleRouteChange
+                                subRoute
+                                subModel
+                                |> Admin
+                            , Cmd.none
+                            )
 
                         _ ->
                             if Session.adminMode session /= Nothing then
-                                Admin.init session layout
+                                Admin.init session layout subRoute
                                     |> Admin
                                     |> CmdUtil.withNoCmd
 

@@ -42,6 +42,9 @@ type alias Cell msg =
     }
 
 
+
+
+
 type Width
     = Grow
     | ExactWidth Size

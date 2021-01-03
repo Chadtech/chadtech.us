@@ -1,4 +1,10 @@
-module Storage exposing (Storage, decoder, get, listener, set)
+module Storage exposing
+    ( Storage
+    , decoder
+    , get
+    , listener
+    , set
+    )
 
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
@@ -15,17 +21,6 @@ import Ports.ToJs as ToJs
 
 type Storage
     = Storage (Dict String Decode.Value)
-
-
-
---------------------------------------------------------------------------------
--- IMPLEMENTATION --
---------------------------------------------------------------------------------
-
-
-empty : Storage
-empty =
-    Storage Dict.empty
 
 
 
@@ -59,12 +54,6 @@ decoder : Decoder Storage
 decoder =
     Decode.dict Decode.value
         |> Decode.map Storage
-
-
-
---------------------------------------------------------------------------------
--- PORTS INCOMING --
---------------------------------------------------------------------------------
 
 
 listener : (Storage -> msg) -> FromJs.Listener msg

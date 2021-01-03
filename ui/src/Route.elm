@@ -2,6 +2,7 @@ module Route exposing
     ( Route(..)
     , admin
     , blog
+    , fromAdminRoute
     , fromUrl
     , href
     , toString
@@ -9,6 +10,7 @@ module Route exposing
 
 import Html.Styled exposing (Attribute)
 import Html.Styled.Attributes as A
+import Route.Admin as Admin
 import Url exposing (Url)
 import Url.Builder as UrlBuilder
 import Url.Parser as P exposing ((</>), Parser)
@@ -23,7 +25,7 @@ import Url.Parser as P exposing ((</>), Parser)
 type Route
     = Landing
     | Blog
-    | Admin
+    | Admin Admin.Route
 
 
 
@@ -37,7 +39,7 @@ parser =
     [ P.map Landing P.top
     , P.map Blog <| P.s blogPath
     , P.map Blog <| P.s "#" </> P.s blogPath
-    , P.map Admin <| P.s adminPath
+    , P.map Admin <| P.s adminPath </> Admin.parser
     ]
         |> P.oneOf
 
@@ -70,8 +72,8 @@ toString route =
                 Blog ->
                     [ blogPath ]
 
-                Admin ->
-                    [ adminPath ]
+                Admin subRoute ->
+                    adminPath :: Admin.toPath subRoute
     in
     UrlBuilder.relative path []
 
@@ -83,6 +85,11 @@ blog =
 
 admin : Route
 admin =
+    fromAdminRoute Admin.landing
+
+
+fromAdminRoute : Admin.Route -> Route
+fromAdminRoute =
     Admin
 
 

@@ -89,6 +89,7 @@ async fn main() -> Result<(), String> {
             .data(model)
             .route("/elm.js", web::get().to(elm_asset_route))
             .route("/app.js", web::get().to(js_asset_route))
+            // .service("/api/checkpassword", web::get().to(check_password))
             .default_service(web::get().to(frontend))
     })
     .bind(socket_address)
@@ -182,6 +183,12 @@ async fn frontend() -> HttpResponse {
         "#,
     )
 }
+
+// async fn check_password(data: web::Data<Model>) -> HttpResponse {
+//     let mut counter = data.counter.lock().unwrap(); // <- get counter's MutexGuard
+//     *counter += 1; // <- access counter inside MutexGuard
+//     HttpResponse::Ok().body("hello")
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 // COMPILATION //

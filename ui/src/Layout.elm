@@ -91,8 +91,7 @@ navigation session activeNavItem =
                 |> Button.when
                     (Just navItem == activeNavItem)
                     Button.active
-                |> Button.toCell
-                |> Row.fromCell
+                |> Button.toRow
 
         showNavItem : NavItem -> Bool
         showNavItem navItem =
@@ -142,7 +141,7 @@ routeToNavItem route =
         Route.Blog ->
             Blog
 
-        Route.Admin ->
+        Route.Admin _ ->
             Admin
 
 

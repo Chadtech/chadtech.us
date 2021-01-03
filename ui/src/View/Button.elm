@@ -4,6 +4,7 @@ module View.Button exposing
     , fromLabel
     , simple
     , toCell
+    , toRow
     , when
     , withLink
     , withLinkToNewWindow
@@ -19,6 +20,7 @@ import Style.Color as Color exposing (Color)
 import Style.Padding as Padding
 import Style.Size as Size
 import View.Cell as Cell exposing (Cell)
+import View.Row as Row exposing (Row)
 
 
 
@@ -198,3 +200,8 @@ simple label msg =
 toCell : Button msg -> Cell msg
 toCell button =
     Cell.fromHtml [ toHtml button ]
+
+
+toRow : Button msg -> Row msg
+toRow =
+    toCell >> Row.fromCell
