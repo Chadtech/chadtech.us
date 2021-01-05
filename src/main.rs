@@ -1,12 +1,20 @@
 mod flags;
 
 use crate::flags::Flags;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use crate::graphql_schema::{create_schema, Schema};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use futures::future;
+use futures::future::Future;
+use juniper::http::graphiql::graphiql_source;
+use juniper::http::GraphQLRequest;
 use notify::{raw_watcher, RecursiveMode, Watcher};
 use std::fs;
 use std::process::Command;
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::thread;
+
+mod graphql_schema;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TYPES //
@@ -82,13 +90,17 @@ async fn main() -> Result<(), String> {
 
     socket_address.push_str(":");
     socket_address.push_str(model.port_number.to_string().as_str());
-
+    // Create Juniper schema
+    let schema = std::sync::Arc::new(create_schema());
     HttpServer::new(move || {
-        let model = model.clone();
         App::new()
-            .data(model)
+            .data(model.clone())
+            .data(schema.clone())
+            .wrap(middleware::Logger::default())
             .route("/elm.js", web::get().to(elm_asset_route))
             .route("/app.js", web::get().to(js_asset_route))
+            .service(web::resource("/graphql").route(web::post().to(graphql)))
+            .service(web::resource("/graphiql").route(web::get().to(graphiql)))
             // .service("/api/checkpassword", web::get().to(check_password))
             .default_service(web::get().to(frontend))
     })
@@ -139,6 +151,28 @@ fn read_js_file() -> std::io::Result<String> {
 ////////////////////////////////////////////////////////////////////////////////
 // ROUTES //
 ////////////////////////////////////////////////////////////////////////////////
+
+async fn graphiql() -> HttpResponse {
+    let html = graphiql_source("http://127.0.0.1:8080/graphql");
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html)
+}
+
+async fn graphql(
+    st: web::Data<Arc<Schema>>,
+    data: web::Json<GraphQLRequest>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let user = web::block(move || {
+        dbg!("Hello");
+        let res = data.execute(&st, &());
+        Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
+    })
+    .await?;
+    Ok(HttpResponse::Ok()
+        .content_type("application/json")
+        .body(user))
+}
 
 async fn elm_asset_route(model: web::Data<Model>) -> HttpResponse {
     match &model.get_ref().prod_model {
