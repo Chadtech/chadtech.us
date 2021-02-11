@@ -3,8 +3,6 @@ mod flags;
 use crate::flags::Flags;
 use crate::graphql_schema::{create_schema, Schema};
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
-use futures::future;
-use futures::future::Future;
 use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
 use notify::{raw_watcher, RecursiveMode, Watcher};
