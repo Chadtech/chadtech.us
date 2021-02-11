@@ -75,7 +75,7 @@ toString route =
                 Admin subRoute ->
                     adminPath :: Admin.toPath subRoute
     in
-    UrlBuilder.relative path []
+    UrlBuilder.absolute path []
 
 
 blog : Route

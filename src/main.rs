@@ -206,12 +206,12 @@ async fn frontend() -> HttpResponse {
 <html>
 
 <head>
-  <script type="text/javascript" src="./elm.js"></script>
+  <script type="text/javascript" src="/elm.js"></script>
 </head>
 
 <body>
 </body>
-<script type="text/javascript" src="./app.js"></script>
+<script type="text/javascript" src="/app.js"></script>
 
 </html>
         "#,
