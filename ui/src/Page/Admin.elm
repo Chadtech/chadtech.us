@@ -44,7 +44,7 @@ type Msg
 
 
 type NavItem
-    = NavItem__NewYearsCards
+    = NavItem__Blog
 
 
 
@@ -119,15 +119,15 @@ setLayout layout model =
 navItemToRoute : NavItem -> Route
 navItemToRoute navItem =
     case navItem of
-        NavItem__NewYearsCards ->
-            AdminRoute.NewYearsCards
+        NavItem__Blog ->
+            AdminRoute.Blog
 
 
 navItemToLabel : NavItem -> String
 navItemToLabel navItem =
     case navItem of
-        NavItem__NewYearsCards ->
-            "New Years Cards"
+        NavItem__Blog ->
+            "Blog"
 
 
 setPasswordField : String -> Model -> Model
@@ -143,13 +143,13 @@ setNavItem navItem model =
 routeToNavItem : Route -> NavItem
 routeToNavItem route =
     case route of
-        AdminRoute.NewYearsCards ->
-            NavItem__NewYearsCards
+        AdminRoute.Blog ->
+            NavItem__Blog
 
 
 navItems : List NavItem
 navItems =
-    [ NavItem__NewYearsCards ]
+    [ NavItem__Blog ]
 
 
 
