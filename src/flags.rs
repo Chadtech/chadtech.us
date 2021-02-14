@@ -9,6 +9,7 @@ pub struct Flags {
     pub admin_password: String,
     pub port_number: u64,
     pub dev_mode: bool,
+    pub show_elm_output: bool,
 }
 
 impl Flags {
@@ -26,6 +27,8 @@ impl Flags {
 
         let mut dev_mode = false;
 
+        let mut show_elm_output = true;
+
         for arg in args {
             match arg.find("=") {
                 None => match arg.as_str() {
@@ -34,6 +37,10 @@ impl Flags {
                         maybe_admin_password = Ok("password".to_string());
                         maybe_port = Ok(8080);
                         dev_mode = true;
+                    }
+
+                    "hide-elm-output" => {
+                        show_elm_output = false;
                     }
 
                     arg_str => {
@@ -93,6 +100,7 @@ impl Flags {
             admin_password,
             dev_mode,
             port_number,
+            show_elm_output,
         })
     }
 }

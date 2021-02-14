@@ -23,17 +23,19 @@ struct Model {
     pub ip_address: String,
     pub admin_password: String,
     pub port_number: u64,
-    pub prod_model: Option<ProdModel>,
+    pub setting: Setting,
 }
 
 impl Model {
     fn init() -> Result<Model, String> {
         let flags = Flags::init()?;
 
-        let maybe_prod_model: Option<ProdModel> = if flags.dev_mode {
-            None
+        let setting: Setting = if flags.dev_mode {
+            Setting::Dev(DevModel {
+                show_elm_output: flags.show_elm_output,
+            })
         } else {
-            Some(ProdModel {
+            Setting::Prod(ProdModel {
                 elm_file: read_elm_file().map_err(|err| err.to_string()),
                 js_file: read_js_file().map_err(|err| err.to_string()),
             })
@@ -43,9 +45,20 @@ impl Model {
             ip_address: flags.ip_address,
             admin_password: flags.admin_password,
             port_number: flags.port_number,
-            prod_model: maybe_prod_model,
+            setting,
         })
     }
+}
+
+#[derive(Clone)]
+enum Setting {
+    Prod(ProdModel),
+    Dev(DevModel),
+}
+
+#[derive(Clone)]
+struct DevModel {
+    show_elm_output: bool,
 }
 
 #[derive(Clone)]
@@ -62,19 +75,20 @@ struct ProdModel {
 async fn main() -> Result<(), String> {
     let model = Model::init()?;
 
-    let dev_mode = if let None = model.prod_model {
+    let dev_mode = if let Setting::Prod(_) = model.setting {
         true
     } else {
         false
     };
 
     write_frontend_api_code(&model).map_err(|err| err.to_string())?;
-    compile_elm(dev_mode)?;
+    compile_elm(&model.setting)?;
     compile_js(dev_mode)?;
 
     if dev_mode {
+        let setting = model.setting.clone();
         thread::spawn(move || {
-            watch_and_recompile_ui();
+            watch_and_recompile_ui(&setting);
         });
     };
 
@@ -162,7 +176,6 @@ async fn graphql(
     data: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let user = web::block(move || {
-        dbg!("Hello");
         let res = data.execute(&st, &());
         Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
     })
@@ -173,12 +186,12 @@ async fn graphql(
 }
 
 async fn elm_asset_route(model: web::Data<Model>) -> HttpResponse {
-    match &model.get_ref().prod_model {
-        None => match read_elm_file() {
+    match &model.get_ref().setting {
+        Setting::Dev(_) => match read_elm_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
             Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
         },
-        Some(prod_model) => match &prod_model.elm_file {
+        Setting::Prod(prod_model) => match &prod_model.elm_file {
             Ok(file_str) => HttpResponse::Ok().body(file_str),
             Err(_) => HttpResponse::InternalServerError().body("elm file was missing"),
         },
@@ -186,12 +199,12 @@ async fn elm_asset_route(model: web::Data<Model>) -> HttpResponse {
 }
 
 async fn js_asset_route(model: web::Data<Model>) -> HttpResponse {
-    match &model.get_ref().prod_model {
-        None => match read_js_file() {
+    match &model.get_ref().setting {
+        Setting::Dev(_) => match read_js_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
             Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
         },
-        Some(prod_model) => match &prod_model.js_file {
+        Setting::Prod(prod_model) => match &prod_model.js_file {
             Ok(file_str) => HttpResponse::Ok().body(file_str),
             Err(_) => HttpResponse::InternalServerError().body("elm file was missing"),
         },
@@ -227,8 +240,8 @@ async fn frontend() -> HttpResponse {
 ////////////////////////////////////////////////////////////////////////////////
 
 fn write_frontend_api_code(model: &Model) -> std::io::Result<()> {
-    let url = match &model.prod_model {
-        None => {
+    let url = match &model.setting {
+        Setting::Dev(_) => {
             let mut buf = String::new();
 
             buf.push_str("localhost:");
@@ -236,7 +249,7 @@ fn write_frontend_api_code(model: &Model) -> std::io::Result<()> {
 
             buf
         }
-        Some(_) => {
+        Setting::Prod(_) => {
             let mut buf = String::new();
 
             buf.push_str(model.ip_address.as_str());
@@ -271,40 +284,52 @@ asString =
     )
 }
 
-fn compile_elm(dev_mode: bool) -> Result<(), String> {
-    if dev_mode {
-        clear_terminal();
+fn compile_elm(setting: &Setting) -> Result<(), String> {
+    match setting {
+        Setting::Dev(dev_model) => {
+            if dev_model.show_elm_output {
+                clear_terminal();
 
-        Command::new("elm")
-            .current_dir("./ui")
-            .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
-            .spawn()
-            .map(|_| ())
-            .map_err(|err| err.to_string())
-    } else {
-        let output_result = Command::new("elm")
-            .current_dir("./ui")
-            .args(&[
-                "make",
-                "./src/Main.elm",
-                "--output=./public/elm.js",
-                "--optimize",
-            ])
-            .output();
-
-        match output_result {
-            Ok(output) => {
-                if output.status.success() {
-                    Ok(())
-                } else {
-                    let mut buf = "failed to compiled Elm with status code : ".to_string();
-
-                    buf.push_str(output.status.to_string().as_str());
-
-                    Err(buf)
-                }
+                Command::new("elm")
+                    .current_dir("./ui")
+                    .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
+                    .spawn()
+                    .map(|_| ())
+                    .map_err(|err| err.to_string())
+            } else {
+                Command::new("elm")
+                    .current_dir("./ui")
+                    .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
+                    .output()
+                    .map(|_| ())
+                    .map_err(|err| err.to_string())
             }
-            Err(err) => Err(err.to_string()),
+        }
+        Setting::Prod(_) => {
+            let output_result = Command::new("elm")
+                .current_dir("./ui")
+                .args(&[
+                    "make",
+                    "./src/Main.elm",
+                    "--output=./public/elm.js",
+                    "--optimize",
+                ])
+                .output();
+
+            match output_result {
+                Ok(output) => {
+                    if output.status.success() {
+                        Ok(())
+                    } else {
+                        let mut buf = "failed to compiled Elm with status code : ".to_string();
+
+                        buf.push_str(output.status.to_string().as_str());
+
+                        Err(buf)
+                    }
+                }
+                Err(err) => Err(err.to_string()),
+            }
         }
     }
 }
@@ -331,7 +356,7 @@ fn clear_terminal() {
 // DEV //
 ////////////////////////////////////////////////////////////////////////////////
 
-fn watch_and_recompile_ui() {
+fn watch_and_recompile_ui(setting: &Setting) {
     let (sender, receiver) = channel();
 
     let mut watcher = raw_watcher(sender).unwrap();
@@ -346,7 +371,7 @@ fn watch_and_recompile_ui() {
                     let file_extension = filepath.extension().and_then(|ext| ext.to_str());
 
                     match file_extension {
-                        Some("elm") => compile_elm(true),
+                        Some("elm") => compile_elm(setting),
                         Some("js") => compile_js(true),
                         _ => Ok(()),
                     }
