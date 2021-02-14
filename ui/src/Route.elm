@@ -37,9 +37,16 @@ type Route
 parser : Parser (Route -> a) a
 parser =
     [ P.map Landing P.top
-    , P.map Blog <| P.s blogPath
-    , P.map Blog <| P.s "#" </> P.s blogPath
+    , hashAndNonHash Blog blogPath
     , P.map Admin <| P.s adminPath </> Admin.parser
+    ]
+        |> P.oneOf
+
+
+hashAndNonHash : Route -> String -> Parser (Route -> a) a
+hashAndNonHash route path =
+    [ P.map route <| P.s path
+    , P.map route <| P.s "#" </> P.s path
     ]
         |> P.oneOf
 
