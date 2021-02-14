@@ -30,16 +30,19 @@ impl Flags {
         let mut show_elm_output = true;
 
         for arg in args {
+            let mut dev = || {
+                maybe_ip_address = Ok("127.0.0.1".to_string());
+                maybe_admin_password = Ok("password".to_string());
+                maybe_port = Ok(8080);
+                dev_mode = true;
+            };
+
             match arg.find("=") {
                 None => match arg.as_str() {
-                    "dev" => {
-                        maybe_ip_address = Ok("127.0.0.1".to_string());
-                        maybe_admin_password = Ok("password".to_string());
-                        maybe_port = Ok(8080);
-                        dev_mode = true;
-                    }
+                    "dev" => dev(),
 
-                    "hide-elm-output" => {
+                    "dev-backend" => {
+                        dev();
                         show_elm_output = false;
                     }
 

@@ -7,10 +7,13 @@ use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
 use notify::{raw_watcher, RecursiveMode, Watcher};
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
+use tokio_postgres;
+use tokio_postgres::{Client, NoTls};
 
 mod graphql_schema;
 
@@ -73,6 +76,22 @@ struct ProdModel {
 
 #[actix_web::main]
 async fn main() -> Result<(), String> {
+    let client = init_db().await?;
+
+    // client
+    //     .execute(
+    //         "CREATE TABLE IF NOT EXISTS customers(
+    //         id UUID PRIMARY KEY,
+    //         name TEXT NOT NULL,
+    //         age INT NOT NULL,
+    //         email TEXT UNIQUE NOT NULL,
+    //         address TEXT NOT NULL
+    //     )",
+    //         &[],
+    //     )
+    //     .await
+    //     .expect("Could not create table");
+
     let model = Model::init()?;
 
     let dev_mode = if let Setting::Prod(_) = model.setting {
@@ -105,7 +124,7 @@ async fn main() -> Result<(), String> {
     // Create Juniper schema
     let schema = std::sync::Arc::new(create_schema());
     HttpServer::new(move || {
-        App::new()
+        let app = App::new()
             .data(model.clone())
             .data(schema.clone())
             .wrap(middleware::Logger::default())
@@ -114,7 +133,9 @@ async fn main() -> Result<(), String> {
             .service(web::resource("/graphql").route(web::post().to(graphql)))
             .service(web::resource("/graphiql").route(web::get().to(graphiql)))
             // .service("/api/checkpassword", web::get().to(check_password))
-            .default_service(web::get().to(frontend))
+            .default_service(web::get().to(frontend));
+
+        app
     })
     .bind(socket_address)
     .map_err(|err| err.to_string())?
@@ -234,6 +255,44 @@ async fn frontend() -> HttpResponse {
 //     *counter += 1; // <- access counter inside MutexGuard
 //     HttpResponse::Ok().body("hello")
 // }
+
+////////////////////////////////////////////////////////////////////////////////
+// DB //
+////////////////////////////////////////////////////////////////////////////////
+
+async fn init_db() -> Result<(), String> {
+    let existing_db = Path::new("./db").exists();
+
+    if !existing_db {
+        let mut init_cmd = Command::new("initdb")
+            .args(&["./db"])
+            .spawn()
+            .map_err(|err| err.to_string())?;
+
+        init_cmd.wait().unwrap();
+    }
+
+    let mut start_cmd = Command::new("pg_ctl")
+        .args(&["-D", "./db", "-l", "logfile", "start"])
+        .spawn()
+        .map_err(|err| err.to_string())?;
+
+    start_cmd.wait().unwrap();
+
+    // let (client, connection) = tokio_postgres::connect("host=localhost user=postgres", NoTls)
+    //     .await
+    //     .unwrap();
+    //
+    // // The connection object performs the actual communication with the database,
+    // // so spawn it off to run on its own.
+    // tokio::spawn(async move {
+    //     if let Err(e) = connection.await {
+    //         eprintln!("connection error: {}", e);
+    //     }
+    // });
+
+    Ok(())
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // COMPILATION //

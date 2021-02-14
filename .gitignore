@@ -5,3 +5,5 @@
 /ui/public/app.js
 website.iml
 /node_modules
+/db
+logfile
