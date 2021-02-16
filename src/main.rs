@@ -1,5 +1,3 @@
-mod flags;
-
 use crate::flags::Flags;
 use crate::graphql_schema::{create_schema, Schema};
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
@@ -7,7 +5,6 @@ use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
 use notify::{raw_watcher, RecursiveMode, Watcher};
 use std::fs;
-use std::path::Path;
 use std::process::Command;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
@@ -15,6 +12,8 @@ use std::thread;
 use tokio_postgres;
 use tokio_postgres::{Client, NoTls};
 
+mod blogposts;
+mod flags;
 mod graphql_schema;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,21 +75,20 @@ struct ProdModel {
 
 #[actix_web::main]
 async fn main() -> Result<(), String> {
-    let client = init_db().await?;
+    let client = start().await?;
 
-    // client
-    //     .execute(
-    //         "CREATE TABLE IF NOT EXISTS customers(
-    //         id UUID PRIMARY KEY,
-    //         name TEXT NOT NULL,
-    //         age INT NOT NULL,
-    //         email TEXT UNIQUE NOT NULL,
-    //         address TEXT NOT NULL
-    //     )",
-    //         &[],
-    //     )
-    //     .await
-    //     .expect("Could not create table");
+    client
+        .execute(
+            "CREATE TABLE IF NOT EXISTS blogpostv2(
+            id INT PRIMARY KEY,
+            date INT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL
+        )",
+            &[],
+        )
+        .await
+        .expect("Could not create table");
 
     let model = Model::init()?;
 
@@ -121,17 +119,19 @@ async fn main() -> Result<(), String> {
 
     socket_address.push_str(":");
     socket_address.push_str(model.port_number.to_string().as_str());
+
     // Create Juniper schema
-    let schema = std::sync::Arc::new(create_schema());
+
+    // let schema = std::sync::Arc::new(create_schema);
     HttpServer::new(move || {
         let app = App::new()
             .data(model.clone())
-            .data(schema.clone())
+            .data(create_schema())
             .wrap(middleware::Logger::default())
             .route("/elm.js", web::get().to(elm_asset_route))
             .route("/app.js", web::get().to(js_asset_route))
-            .service(web::resource("/graphql").route(web::post().to(graphql)))
-            .service(web::resource("/graphiql").route(web::get().to(graphiql)))
+            .route("/graphql", web::post().to(graphql))
+            .route("/graphiql", web::get().to(graphiql))
             // .service("/api/checkpassword", web::get().to(check_password))
             .default_service(web::get().to(frontend));
 
@@ -193,14 +193,17 @@ async fn graphiql() -> HttpResponse {
 }
 
 async fn graphql(
-    st: web::Data<Arc<Schema>>,
-    data: web::Json<GraphQLRequest>,
+    ctx: web::data<graphql_schema::Context>,
+    schema: web::Data<Arc<Schema>>,
+    req: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let user = web::block(move || {
-        let res = data.execute(&st, &());
+        let res = req.execute(&schema, &ctx);
         Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
     })
-    .await?;
+    .await
+    .map_err(actix_web::Error::from)?;
+
     Ok(HttpResponse::Ok()
         .content_type("application/json")
         .body(user))
@@ -260,38 +263,20 @@ async fn frontend() -> HttpResponse {
 // DB //
 ////////////////////////////////////////////////////////////////////////////////
 
-async fn init_db() -> Result<(), String> {
-    let existing_db = Path::new("./db").exists();
+async fn start() -> Result<Client, String> {
+    let (client, connection) = tokio_postgres::connect("host=localhost user=postgres", NoTls)
+        .await
+        .unwrap();
 
-    if !existing_db {
-        let mut init_cmd = Command::new("initdb")
-            .args(&["./db"])
-            .spawn()
-            .map_err(|err| err.to_string())?;
+    // The connection object performs the actual communication with the database,
+    // so spawn it off to run on its own.
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
 
-        init_cmd.wait().unwrap();
-    }
-
-    let mut start_cmd = Command::new("pg_ctl")
-        .args(&["-D", "./db", "-l", "logfile", "start"])
-        .spawn()
-        .map_err(|err| err.to_string())?;
-
-    start_cmd.wait().unwrap();
-
-    // let (client, connection) = tokio_postgres::connect("host=localhost user=postgres", NoTls)
-    //     .await
-    //     .unwrap();
-    //
-    // // The connection object performs the actual communication with the database,
-    // // so spawn it off to run on its own.
-    // tokio::spawn(async move {
-    //     if let Err(e) = connection.await {
-    //         eprintln!("connection error: {}", e);
-    //     }
-    // });
-
-    Ok(())
+    Ok(client)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
