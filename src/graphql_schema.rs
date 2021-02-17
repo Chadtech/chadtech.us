@@ -1,12 +1,10 @@
-use juniper::FieldResult;
 use juniper::RootNode;
 
 use crate::blogposts;
-use juniper::{GraphQLEnum, GraphQLInputObject, GraphQLObject};
 use tokio_postgres::Client;
 
 pub struct Context {
-    client: Client,
+    pub client: Client,
 }
 
 impl juniper::Context for Context {}
@@ -16,17 +14,18 @@ pub struct Query;
 #[juniper::object(Context = Context)]
 impl Query {}
 
-struct Mutation;
+pub struct Mutation;
 
 #[juniper::object(Context = Context)]
 impl Mutation {
     fn create_blogpost_v2(
         ctx: &Context,
-        date: usize,
+        date: f64,
         title: String,
         content: String,
     ) -> juniper::FieldResult<blogposts::v2::Post> {
         let id = 0;
+
         ctx.client.execute(
             "INSERT INTO blogpostv2 (id, date, title, content) VALUES ($1, $2, $3, $4)",
             &[&id, &date, &title, &content],

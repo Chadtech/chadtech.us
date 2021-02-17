@@ -122,20 +122,21 @@ async fn main() -> Result<(), String> {
 
     // Create Juniper schema
 
+    let ctx = actix_web::web::Data::new(Arc::new(graphql_schema::Context { client }));
+
+    let web_model = actix_web::web::Data::new(model.clone());
     // let schema = std::sync::Arc::new(create_schema);
     HttpServer::new(move || {
-        let app = App::new()
-            .data(model.clone())
-            .data(create_schema())
+        App::new()
             .wrap(middleware::Logger::default())
+            .data(ctx.clone())
+            .data(create_schema())
+            .data(model.clone())
             .route("/elm.js", web::get().to(elm_asset_route))
             .route("/app.js", web::get().to(js_asset_route))
             .route("/graphql", web::post().to(graphql))
             .route("/graphiql", web::get().to(graphiql))
-            // .service("/api/checkpassword", web::get().to(check_password))
-            .default_service(web::get().to(frontend));
-
-        app
+            .default_service(web::get().to(frontend))
     })
     .bind(socket_address)
     .map_err(|err| err.to_string())?
@@ -193,8 +194,9 @@ async fn graphiql() -> HttpResponse {
 }
 
 async fn graphql(
-    ctx: web::data<graphql_schema::Context>,
+    ctx: web::Data<Arc<graphql_schema::Context>>,
     schema: web::Data<Arc<Schema>>,
+    model: web::Data<Model>,
     req: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let user = web::block(move || {
@@ -252,12 +254,6 @@ async fn frontend() -> HttpResponse {
         "#,
     )
 }
-
-// async fn check_password(data: web::Data<Model>) -> HttpResponse {
-//     let mut counter = data.counter.lock().unwrap(); // <- get counter's MutexGuard
-//     *counter += 1; // <- access counter inside MutexGuard
-//     HttpResponse::Ok().body("hello")
-// }
 
 ////////////////////////////////////////////////////////////////////////////////
 // DB //
