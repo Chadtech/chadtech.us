@@ -1,4 +1,4 @@
-use juniper::RootNode;
+use juniper::{FieldResult, RootNode};
 
 use crate::blogposts;
 use tokio_postgres::Client;
@@ -12,7 +12,29 @@ impl juniper::Context for Context {}
 pub struct Query;
 
 #[juniper::object(Context = Context)]
-impl Query {}
+impl Query {
+    #[graphql(description = "List of all version 2 blog posts")]
+    fn blogposts_v2(context: &Context) -> FieldResult<Vec<blogposts::v2::Post>> {
+        Ok(Vec::new())
+    }
+    // #[graphql(description = "List of all users")]
+    // fn users(context: &Context) -> FieldResult<Vec<User>> {
+    //     let mut conn = context.dbpool.get().unwrap();
+    //     let users = conn
+    //         .prep_exec("select * from user", ())
+    //         .map(|result| {
+    //             result
+    //                 .map(|x| x.unwrap())
+    //                 .map(|mut row| {
+    //                     let (id, name, email) = from_row(row);
+    //                     User { id, name, email }
+    //                 })
+    //                 .collect()
+    //         })
+    //         .unwrap();
+    //     Ok(users)
+    // }
+}
 
 pub struct Mutation;
 

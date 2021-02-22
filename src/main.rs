@@ -122,16 +122,18 @@ async fn main() -> Result<(), String> {
 
     // Create Juniper schema
 
-    let ctx = actix_web::web::Data::new(Arc::new(graphql_schema::Context { client }));
+    let ctx = actix_web::web::Data::new(graphql_schema::Context { client });
 
-    let web_model = actix_web::web::Data::new(model.clone());
+    let web_model = actix_web::web::Data::new(Arc::new(model.clone()));
     // let schema = std::sync::Arc::new(create_schema);
+
+    let web_schema = actix_web::web::Data::new(create_schema());
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
-            .data(ctx.clone())
-            .data(create_schema())
-            .data(model.clone())
+            .app_data(ctx.clone())
+            .app_data(web_schema.clone())
+            .app_data(web_model.clone())
             .route("/elm.js", web::get().to(elm_asset_route))
             .route("/app.js", web::get().to(js_asset_route))
             .route("/graphql", web::post().to(graphql))
@@ -194,9 +196,9 @@ async fn graphiql() -> HttpResponse {
 }
 
 async fn graphql(
-    ctx: web::Data<Arc<graphql_schema::Context>>,
-    schema: web::Data<Arc<Schema>>,
-    model: web::Data<Model>,
+    ctx: web::Data<graphql_schema::Context>,
+    schema: web::Data<Schema>,
+    // model: web::Data<Arc<Model>>,
     req: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let user = web::block(move || {
