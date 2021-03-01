@@ -27,15 +27,15 @@ mod graphql_schema;
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
-struct Model {
+struct Modelka {
     pub ip_address: String,
     pub admin_password: String,
     pub port_number: u64,
     pub setting: Setting,
 }
 
-impl Model {
-    fn init() -> Result<Model, String> {
+impl Modelka {
+    fn poca() -> Result<Modelka, String> {
         let flags = Flags::init()?;
 
         let setting: Setting = if flags.dev_mode {
@@ -49,7 +49,7 @@ impl Model {
             })
         };
 
-        Ok(Model {
+        Ok(Modelka {
             ip_address: flags.ip_address,
             admin_password: flags.admin_password,
             port_number: flags.port_number,
@@ -83,7 +83,7 @@ struct ProdModel {
 async fn main() -> Result<(), String> {
     let pool = db::get_pool();
 
-    let model = Model::init()?;
+    let model = Modelka::poca()?;
 
     let dev_mode = if let Setting::Prod(_) = model.setting {
         true
@@ -122,7 +122,7 @@ async fn main() -> Result<(), String> {
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
-            .data(pool)
+            .data(pool.clone())
             .app_data(web_schema.clone())
             .app_data(web_model.clone())
             .route("/elm.js", web::get().to(elm_asset_route))
@@ -208,7 +208,7 @@ async fn graphql(
         .body(user))
 }
 
-async fn elm_asset_route(model: web::Data<Model>) -> HttpResponse {
+async fn elm_asset_route(model: web::Data<Modelka>) -> HttpResponse {
     match &model.get_ref().setting {
         Setting::Dev(_) => match read_elm_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
@@ -221,7 +221,7 @@ async fn elm_asset_route(model: web::Data<Model>) -> HttpResponse {
     }
 }
 
-async fn js_asset_route(model: web::Data<Model>) -> HttpResponse {
+async fn js_asset_route(model: web::Data<Modelka>) -> HttpResponse {
     match &model.get_ref().setting {
         Setting::Dev(_) => match read_js_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
@@ -253,20 +253,10 @@ async fn frontend() -> HttpResponse {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// DB //
-////////////////////////////////////////////////////////////////////////////////
-
-async fn start() -> Result<Pool, String> {
-    let pool = db::get_pool();
-
-    Ok(pool)
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // COMPILATION //
 ////////////////////////////////////////////////////////////////////////////////
 
-fn write_frontend_api_code(model: &Model) -> std::io::Result<()> {
+fn write_frontend_api_code(model: &Modelka) -> std::io::Result<()> {
     let url = match &model.setting {
         Setting::Dev(_) => {
             let mut buf = String::new();

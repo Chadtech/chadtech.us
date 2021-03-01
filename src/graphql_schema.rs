@@ -2,7 +2,7 @@ use juniper::{FieldError, FieldResult, RootNode};
 
 use crate::blogposts;
 use crate::db::Pool;
-use mysql::{from_row, params, Error as DBError, Row};
+use mysql::{params, Error as DBError, Row};
 
 pub struct Context {
     pub db_pool: Pool,
