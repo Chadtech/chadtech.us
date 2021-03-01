@@ -1,5 +1,12 @@
+#[macro_use]
+extern crate juniper;
+extern crate r2d2;
+extern crate r2d2_mysql;
+extern crate serde_json;
+
+use crate::db::Pool;
 use crate::flags::Flags;
-use crate::graphql_schema::{create_schema, Schema};
+use crate::graphql_schema::{create_schema, Context, Schema};
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
@@ -9,10 +16,9 @@ use std::process::Command;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
-use tokio_postgres;
-use tokio_postgres::{Client, NoTls};
 
 mod blogposts;
+mod db;
 mod flags;
 mod graphql_schema;
 
@@ -75,20 +81,7 @@ struct ProdModel {
 
 #[actix_web::main]
 async fn main() -> Result<(), String> {
-    let client = start().await?;
-
-    client
-        .execute(
-            "CREATE TABLE IF NOT EXISTS blogpostv2(
-            id INT PRIMARY KEY,
-            date INT NOT NULL,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL
-        )",
-            &[],
-        )
-        .await
-        .expect("Could not create table");
+    let pool = db::get_pool();
 
     let model = Model::init()?;
 
@@ -122,8 +115,6 @@ async fn main() -> Result<(), String> {
 
     // Create Juniper schema
 
-    let ctx = actix_web::web::Data::new(graphql_schema::Context { client });
-
     let web_model = actix_web::web::Data::new(Arc::new(model.clone()));
     // let schema = std::sync::Arc::new(create_schema);
 
@@ -131,7 +122,7 @@ async fn main() -> Result<(), String> {
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
-            .app_data(ctx.clone())
+            .data(pool)
             .app_data(web_schema.clone())
             .app_data(web_model.clone())
             .route("/elm.js", web::get().to(elm_asset_route))
@@ -196,11 +187,15 @@ async fn graphiql() -> HttpResponse {
 }
 
 async fn graphql(
-    ctx: web::Data<graphql_schema::Context>,
+    pool: web::Data<Pool>,
     schema: web::Data<Schema>,
     // model: web::Data<Arc<Model>>,
     req: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    let ctx = Context {
+        db_pool: pool.get_ref().to_owned(),
+    };
+
     let user = web::block(move || {
         let res = req.execute(&schema, &ctx);
         Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
@@ -261,20 +256,10 @@ async fn frontend() -> HttpResponse {
 // DB //
 ////////////////////////////////////////////////////////////////////////////////
 
-async fn start() -> Result<Client, String> {
-    let (client, connection) = tokio_postgres::connect("host=localhost user=postgres", NoTls)
-        .await
-        .unwrap();
+async fn start() -> Result<Pool, String> {
+    let pool = db::get_pool();
 
-    // The connection object performs the actual communication with the database,
-    // so spawn it off to run on its own.
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-
-    Ok(client)
+    Ok(pool)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
