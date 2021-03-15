@@ -1,8 +1,7 @@
-var storageKey = "chadtechus__key"
+var storageKey = "chadtechus__key";
 
 function getStorage() {
-    var storage = JSON.parse(localStorage.getItem(storageKey) || "{})");
-    console.log(storage);
+    var storage = JSON.parse(localStorage.getItem(storageKey) || "{}");
     return storage;
 }
 

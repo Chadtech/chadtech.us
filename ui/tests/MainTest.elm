@@ -1,4 +1,4 @@
-module MainTest exposing (..)
+module MainTest exposing (test)
 
 -- These imports are unused, we but need them for Elm test to
 -- run the tests in these modules, and fail when these modules

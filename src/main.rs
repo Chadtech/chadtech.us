@@ -14,7 +14,6 @@ use notify::{raw_watcher, RecursiveMode, Watcher};
 use std::fs;
 use std::process::Command;
 use std::sync::mpsc::channel;
-use std::sync::Arc;
 use std::thread;
 
 mod blogposts;
@@ -31,19 +30,19 @@ struct Modelka {
     pub ip_address: String,
     pub admin_password: String,
     pub port_number: u64,
-    pub setting: Setting,
+    pub setting: Okoli,
 }
 
 impl Modelka {
     fn poca() -> Result<Modelka, String> {
-        let flags = Flags::init()?;
+        let flags = Flags::poca()?;
 
-        let setting: Setting = if flags.dev_mode {
-            Setting::Dev(DevModel {
+        let setting: Okoli = if flags.dev_mode {
+            Okoli::Dev(DevModelka {
                 show_elm_output: flags.show_elm_output,
             })
         } else {
-            Setting::Prod(ProdModel {
+            Okoli::Prod(ProdModelka {
                 elm_file: read_elm_file().map_err(|err| err.to_string()),
                 js_file: read_js_file().map_err(|err| err.to_string()),
             })
@@ -59,18 +58,18 @@ impl Modelka {
 }
 
 #[derive(Clone)]
-enum Setting {
-    Prod(ProdModel),
-    Dev(DevModel),
+enum Okoli {
+    Prod(ProdModelka),
+    Dev(DevModelka),
 }
 
 #[derive(Clone)]
-struct DevModel {
+struct DevModelka {
     show_elm_output: bool,
 }
 
 #[derive(Clone)]
-struct ProdModel {
+struct ProdModelka {
     elm_file: Result<String, String>,
     js_file: Result<String, String>,
 }
@@ -81,14 +80,14 @@ struct ProdModel {
 
 #[actix_web::main]
 async fn main() -> Result<(), String> {
-    let pool = db::get_pool();
+    let pool = db::get_pool("mysql://root:password@localhost/chadtechus".to_string());
 
     let model = Modelka::poca()?;
 
-    let dev_mode = if let Setting::Prod(_) = model.setting {
-        true
-    } else {
+    let dev_mode = if let Okoli::Prod(_) = model.setting {
         false
+    } else {
+        true
     };
 
     write_frontend_api_code(&model).map_err(|err| err.to_string())?;
@@ -102,21 +101,24 @@ async fn main() -> Result<(), String> {
         });
     };
 
-    let mut socket_address = String::new();
+    let socket_address = {
+        let mut buf = String::new();
 
-    if dev_mode {
-        socket_address.push_str("localhost");
-    } else {
-        socket_address.push_str(model.ip_address.as_str());
-    }
+        if dev_mode {
+            buf.push_str("localhost");
+        } else {
+            buf.push_str(model.ip_address.as_str());
+        }
 
-    socket_address.push_str(":");
-    socket_address.push_str(model.port_number.to_string().as_str());
+        buf.push_str(":");
+        buf.push_str(model.port_number.to_string().as_str());
+
+        buf
+    };
 
     // Create Juniper schema
 
-    let web_model = actix_web::web::Data::new(Arc::new(model.clone()));
-    // let schema = std::sync::Arc::new(create_schema);
+    let web_model = actix_web::web::Data::new(model.clone());
 
     let web_schema = actix_web::web::Data::new(create_schema());
     HttpServer::new(move || {
@@ -210,11 +212,11 @@ async fn graphql(
 
 async fn elm_asset_route(model: web::Data<Modelka>) -> HttpResponse {
     match &model.get_ref().setting {
-        Setting::Dev(_) => match read_elm_file() {
+        Okoli::Dev(_) => match read_elm_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
             Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
         },
-        Setting::Prod(prod_model) => match &prod_model.elm_file {
+        Okoli::Prod(prod_model) => match &prod_model.elm_file {
             Ok(file_str) => HttpResponse::Ok().body(file_str),
             Err(_) => HttpResponse::InternalServerError().body("elm file was missing"),
         },
@@ -223,11 +225,11 @@ async fn elm_asset_route(model: web::Data<Modelka>) -> HttpResponse {
 
 async fn js_asset_route(model: web::Data<Modelka>) -> HttpResponse {
     match &model.get_ref().setting {
-        Setting::Dev(_) => match read_js_file() {
+        Okoli::Dev(_) => match read_js_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
             Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
         },
-        Setting::Prod(prod_model) => match &prod_model.js_file {
+        Okoli::Prod(prod_model) => match &prod_model.js_file {
             Ok(file_str) => HttpResponse::Ok().body(file_str),
             Err(_) => HttpResponse::InternalServerError().body("elm file was missing"),
         },
@@ -258,7 +260,7 @@ async fn frontend() -> HttpResponse {
 
 fn write_frontend_api_code(model: &Modelka) -> std::io::Result<()> {
     let url = match &model.setting {
-        Setting::Dev(_) => {
+        Okoli::Dev(_) => {
             let mut buf = String::new();
 
             buf.push_str("localhost:");
@@ -266,7 +268,7 @@ fn write_frontend_api_code(model: &Modelka) -> std::io::Result<()> {
 
             buf
         }
-        Setting::Prod(_) => {
+        Okoli::Prod(_) => {
             let mut buf = String::new();
 
             buf.push_str(model.ip_address.as_str());
@@ -301,9 +303,9 @@ asString =
     )
 }
 
-fn compile_elm(setting: &Setting) -> Result<(), String> {
+fn compile_elm(setting: &Okoli) -> Result<(), String> {
     match setting {
-        Setting::Dev(dev_model) => {
+        Okoli::Dev(dev_model) => {
             if dev_model.show_elm_output {
                 clear_terminal();
 
@@ -322,7 +324,7 @@ fn compile_elm(setting: &Setting) -> Result<(), String> {
                     .map_err(|err| err.to_string())
             }
         }
-        Setting::Prod(_) => {
+        Okoli::Prod(_) => {
             let output_result = Command::new("elm")
                 .current_dir("./ui")
                 .args(&[
@@ -373,7 +375,7 @@ fn clear_terminal() {
 // DEV //
 ////////////////////////////////////////////////////////////////////////////////
 
-fn watch_and_recompile_ui(setting: &Setting) {
+fn watch_and_recompile_ui(setting: &Okoli) {
     let (sender, receiver) = channel();
 
     let mut watcher = raw_watcher(sender).unwrap();

@@ -3,8 +3,7 @@ use r2d2_mysql::MysqlConnectionManager;
 
 pub type Pool = r2d2::Pool<MysqlConnectionManager>;
 
-pub fn get_pool() -> Pool {
-    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+pub fn get_pool(db_url: String) -> Pool {
     let opts = Opts::from_url(&db_url).unwrap();
     let builder = OptsBuilder::from_opts(opts);
     let manager = MysqlConnectionManager::new(builder);

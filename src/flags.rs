@@ -13,7 +13,7 @@ pub struct Flags {
 }
 
 impl Flags {
-    pub fn init() -> Result<Flags, String> {
+    pub fn poca() -> Result<Flags, String> {
         let mut args: Vec<String> = env::args().collect();
 
         args.remove(0);
