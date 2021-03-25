@@ -237,21 +237,7 @@ async fn js_asset_route(model: web::Data<Modelka>) -> HttpResponse {
 }
 
 async fn frontend() -> HttpResponse {
-    HttpResponse::Ok().body(
-        r#"
-<html>
-
-<head>
-  <script type="text/javascript" src="/elm.js"></script>
-</head>
-
-<body>
-</body>
-<script type="text/javascript" src="/app.js"></script>
-
-</html>
-        "#,
-    )
+    HttpResponse::Ok().body(include_str!("./assets/index.html"))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,25 +267,7 @@ fn write_frontend_api_code(model: &Modelka) -> std::io::Result<()> {
 
     fs::write(
         ui_codegen("Api/Root.elm"),
-        str::replace(
-            r#"module CodeGen.Api.Root exposing 
-    ( asString 
-    )
-
-
----------------------------------------------------------------
--- API --
----------------------------------------------------------------
-
-
-asString : String
-asString =
-    "${url}" 
-
-"#,
-            "${url}",
-            url.as_str(),
-        ),
+        str::replace(include_str!("./assets/ApiRoot.elm"), "${url}", url.as_str()),
     )
 }
 
