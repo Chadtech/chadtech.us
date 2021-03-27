@@ -1,6 +1,6 @@
 module Page.Blog exposing
-    ( Model
-    , Msg
+    ( Modelka
+    , Zpr
     , getLayout
     , getSession
     , incomingPortsListener
@@ -25,13 +25,13 @@ import View.Cell as Cell exposing (Cell)
 ---------------------------------------------------------------
 
 
-type alias Model =
+type alias Modelka =
     { session : Session
     , layout : Layout
     }
 
 
-type Msg
+type Zpr
     = Msg
 
 
@@ -41,7 +41,7 @@ type Msg
 --------------------------------------------------------------------------------
 
 
-init : Session -> Layout -> Model
+init : Session -> Layout -> Modelka
 init session layout =
     { session = session
     , layout = layout
@@ -54,22 +54,22 @@ init session layout =
 --------------------------------------------------------------------------------
 
 
-setSession : Session -> Model -> Model
+setSession : Session -> Modelka -> Modelka
 setSession session model =
     { model | session = session }
 
 
-getSession : Model -> Session
+getSession : Modelka -> Session
 getSession model =
     model.session
 
 
-getLayout : Model -> Layout
+getLayout : Modelka -> Layout
 getLayout model =
     model.layout
 
 
-setLayout : Layout -> Model -> Model
+setLayout : Layout -> Modelka -> Modelka
 setLayout layout model =
     { model | layout = layout }
 
@@ -80,7 +80,7 @@ setLayout layout model =
 --------------------------------------------------------------------------------
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
 update msg model =
     case msg of
         Msg ->
@@ -93,20 +93,20 @@ update msg model =
 --------------------------------------------------------------------------------
 
 
-view : Model -> List (Cell Msg)
+view : Modelka -> List (Cell Zpr)
 view model =
     [ blogSection
     , blogNav
     ]
 
 
-blogSection : Cell Msg
+blogSection : Cell Zpr
 blogSection =
     Cell.fromHtml []
         |> indentBox
 
 
-blogNav : Cell Msg
+blogNav : Cell Zpr
 blogNav =
     Cell.fromHtml []
         |> indentBox
@@ -126,6 +126,6 @@ indentBox cell =
 --------------------------------------------------------------------------------
 
 
-incomingPortsListener : FromJs.Listener Msg
+incomingPortsListener : FromJs.Listener Zpr
 incomingPortsListener =
     FromJs.none

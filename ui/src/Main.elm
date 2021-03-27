@@ -22,9 +22,9 @@ import View.Cell as Cell exposing (Cell)
 --------------------------------------------------------------------------------
 
 
-main : Program Decode.Value (Result Error Model) Msg
+main : Program Decode.Value (Result Error Modelka) Zpr
 main =
-    { init = init
+    { init = poca
     , view = Document.toBrowserDocument << superView
     , update = superUpdate
     , subscriptions = superSubscriptions
@@ -34,7 +34,7 @@ main =
         |> Browser.application
 
 
-superSubscriptions : Result Error Model -> Sub Msg
+superSubscriptions : Result Error Modelka -> Sub Zpr
 superSubscriptions result =
     case result of
         Ok model ->
@@ -44,7 +44,7 @@ superSubscriptions result =
             Sub.none
 
 
-superView : Result Error Model -> Document Msg
+superView : Result Error Modelka -> Document Zpr
 superView result =
     case result of
         Ok model ->
@@ -55,7 +55,7 @@ superView result =
                 []
 
 
-superUpdate : Msg -> Result Error Model -> ( Result Error Model, Cmd Msg )
+superUpdate : Zpr -> Result Error Modelka -> ( Result Error Modelka, Cmd Zpr )
 superUpdate msg result =
     case result of
         Ok model ->
@@ -68,24 +68,26 @@ superUpdate msg result =
 
 
 --------------------------------------------------------------------------------
--- TYPES --
+-- TYPY --
 --------------------------------------------------------------------------------
 
 
-type Model
+type Modelka
     = PageNotFound Session Layout
-    | Blog Blog.Model
-    | Admin Admin.Model
+    | Blog Blog.Modelka
+    | Admin Admin.Modelka
 
 
-type Msg
+{-| zpráva
+-}
+type Zpr
     = MsgDecodeFailed FromJs.Error
     | UrlRequested UrlRequest
     | RouteChanged (Maybe Route)
-    | BlogMsg Blog.Msg
-    | AdminMsg Admin.Msg
+    | BlogZpr Blog.Zpr
+    | AdminZpr Admin.Zpr
     | OpenAdminPanelPressed
-    | SessionMsg Session.Msg
+    | SessionZpr Session.Zpr
 
 
 type Error
@@ -98,8 +100,8 @@ type Error
 --------------------------------------------------------------------------------
 
 
-init : Decode.Value -> Url -> Nav.Key -> ( Result Error Model, Cmd Msg )
-init json url navKey =
+poca : Decode.Value -> Url -> Nav.Key -> ( Result Error Modelka, Cmd Zpr )
+poca json url navKey =
     case Session.init json navKey of
         Ok session ->
             let
@@ -121,21 +123,21 @@ init json url navKey =
 --------------------------------------------------------------------------------
 
 
-getSession : Model -> Session
+getSession : Modelka -> Session
 getSession model =
     case model of
         PageNotFound session _ ->
             session
 
-        Blog subModel ->
-            Blog.getSession subModel
+        Blog subModelka ->
+            Blog.getSession subModelka
 
-        Admin subModel ->
-            Admin.getSession subModel
+        Admin subModelka ->
+            Admin.getSession subModelka
 
 
-setSession : Session -> Model -> Model
-setSession session model =
+datSession : Session -> Modelka -> Modelka
+datSession session model =
     case model of
         PageNotFound _ layout ->
             PageNotFound session layout
@@ -144,15 +146,15 @@ setSession session model =
             Blog <| Blog.setSession session subModel
 
         Admin subModel ->
-            Admin <| Admin.setSession session subModel
+            Admin <| Admin.datSession session subModel
 
 
-mapSession : (Session -> Session) -> Model -> Model
+mapSession : (Session -> Session) -> Modelka -> Modelka
 mapSession f model =
-    setSession (f <| getSession model) model
+    datSession (f <| getSession model) model
 
 
-getLayout : Model -> Layout
+getLayout : Modelka -> Layout
 getLayout model =
     case model of
         PageNotFound _ layout ->
@@ -165,7 +167,7 @@ getLayout model =
             Admin.getLayout subModel
 
 
-setLayout : Layout -> Model -> Model
+setLayout : Layout -> Modelka -> Modelka
 setLayout layout model =
     case model of
         PageNotFound session _ ->
@@ -178,7 +180,7 @@ setLayout layout model =
             Admin <| Admin.setLayout layout subModel
 
 
-mapLayout : (Layout -> Layout) -> Model -> Model
+mapLayout : (Layout -> Layout) -> Modelka -> Modelka
 mapLayout f model =
     setLayout (f <| getLayout model) model
 
@@ -189,20 +191,20 @@ mapLayout f model =
 --------------------------------------------------------------------------------
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
+update msg modelka =
     let
         session : Session
         session =
-            getSession model
+            getSession modelka
 
         layout : Layout
         layout =
-            getLayout model
+            getLayout modelka
     in
     case msg of
         MsgDecodeFailed _ ->
-            model
+            modelka
                 |> CmdUtil.withNoCmd
 
         UrlRequested urlRequest ->
@@ -210,30 +212,30 @@ update msg model =
                 Browser.Internal url ->
                     case Route.fromUrl url of
                         Just route ->
-                            ( model
+                            ( modelka
                             , Session.goTo session route
                             )
 
                         Nothing ->
-                            model
+                            modelka
                                 |> CmdUtil.withNoCmd
 
                 Browser.External url ->
-                    ( model
+                    ( modelka
                     , Nav.load url
                     )
 
         RouteChanged maybeRoute ->
-            superHandleRouteChange maybeRoute model
+            superHandleRouteChange maybeRoute modelka
 
-        BlogMsg subMsg ->
-            case model of
-                Blog subModel ->
-                    Blog.update subMsg subModel
-                        |> CmdUtil.mapBoth Blog BlogMsg
+        BlogZpr subZpr ->
+            case modelka of
+                Blog subModelka ->
+                    Blog.update subZpr subModelka
+                        |> CmdUtil.mapBoth Blog BlogZpr
 
                 _ ->
-                    model
+                    modelka
                         |> CmdUtil.withNoCmd
 
         OpenAdminPanelPressed ->
@@ -241,47 +243,47 @@ update msg model =
                 ( newSession, cmd ) =
                     Session.turnOnAdminMode session
             in
-            ( setSession newSession model
+            ( datSession newSession modelka
             , Cmd.batch
                 [ cmd
                 , Session.goTo session Route.admin
                 ]
             )
 
-        AdminMsg subMsg ->
-            case model of
-                Admin subModel ->
-                    Admin.update subMsg subModel
-                        |> CmdUtil.mapBoth Admin AdminMsg
+        AdminZpr subMsg ->
+            case modelka of
+                Admin subModelka ->
+                    Admin.update subMsg subModelka
+                        |> CmdUtil.mapBoth Admin AdminZpr
 
                 _ ->
-                    model |> CmdUtil.withNoCmd
+                    modelka |> CmdUtil.withNoCmd
 
-        SessionMsg subMsg ->
-            ( mapSession (Session.update subMsg) model
+        SessionZpr subZpr ->
+            ( mapSession (Session.update subZpr) modelka
             , Cmd.none
             )
 
 
-superHandleRouteChange : Maybe Route -> Model -> ( Model, Cmd Msg )
-superHandleRouteChange maybeRoute model =
-    model
+superHandleRouteChange : Maybe Route -> Modelka -> ( Modelka, Cmd Zpr )
+superHandleRouteChange maybeRoute modelka =
+    modelka
         |> mapLayout (Layout.handleRouteChange maybeRoute)
         |> handleRouteChange maybeRoute
 
 
-handleRouteChange : Maybe Route -> Model -> ( Model, Cmd Msg )
-handleRouteChange maybeRoute model =
+handleRouteChange : Maybe Route -> Modelka -> ( Modelka, Cmd Zpr )
+handleRouteChange maybeRoute modelka =
     let
         session : Session
         session =
-            getSession model
+            getSession modelka
 
         layout : Layout
         layout =
-            getLayout model
+            getLayout modelka
 
-        pageNotFound : () -> ( Model, Cmd msg )
+        pageNotFound : () -> ( Modelka, Cmd msg )
         pageNotFound _ =
             PageNotFound session layout
                 |> CmdUtil.withNoCmd
@@ -292,7 +294,7 @@ handleRouteChange maybeRoute model =
 
         Just route ->
             let
-                initBlog : () -> ( Model, Cmd Msg )
+                initBlog : () -> ( Modelka, Cmd Zpr )
                 initBlog _ =
                     ( Blog <| Blog.init session layout
                     , Cmd.none
@@ -306,11 +308,11 @@ handleRouteChange maybeRoute model =
                     initBlog ()
 
                 Route.Admin subRoute ->
-                    case model of
-                        Admin subModel ->
+                    case modelka of
+                        Admin subModelka ->
                             ( Admin.handleRouteChange
                                 subRoute
-                                subModel
+                                subModelka
                                 |> Admin
                             , Cmd.none
                             )
@@ -331,10 +333,10 @@ handleRouteChange maybeRoute model =
 --------------------------------------------------------------------------------
 
 
-view : Model -> Document Msg
+view : Modelka -> Document Zpr
 view model =
     let
-        body : List (Cell Msg)
+        body : List (Cell Zpr)
         body =
             case model of
                 PageNotFound _ _ ->
@@ -342,11 +344,11 @@ view model =
 
                 Blog subModel ->
                     Blog.view subModel
-                        |> List.map (Cell.map BlogMsg)
+                        |> List.map (Cell.map BlogZpr)
 
                 Admin subModel ->
                     Admin.view subModel
-                        |> List.map (Cell.map AdminMsg)
+                        |> List.map (Cell.map AdminZpr)
 
         layout : Layout
         layout =
@@ -366,7 +368,7 @@ view model =
 --------------------------------------------------------------------------------
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : Modelka -> Sub Zpr
 subscriptions model =
     [ FromJs.subscription
         MsgDecodeFailed
@@ -377,7 +379,7 @@ subscriptions model =
         |> Sub.batch
 
 
-keyCmds : List (KeyCmd Msg)
+keyCmds : List (KeyCmd Zpr)
 keyCmds =
     [ KeyCmd.a OpenAdminPanelPressed
         |> KeyCmd.shift
@@ -385,23 +387,23 @@ keyCmds =
     ]
 
 
-incomingPortsListeners : Model -> FromJs.Listener Msg
+incomingPortsListeners : Modelka -> FromJs.Listener Zpr
 incomingPortsListeners model =
     let
-        pageListener : FromJs.Listener Msg
+        pageListener : FromJs.Listener Zpr
         pageListener =
             case model of
                 PageNotFound _ _ ->
                     FromJs.none
 
                 Blog _ ->
-                    FromJs.map BlogMsg Blog.incomingPortsListener
+                    FromJs.map BlogZpr Blog.incomingPortsListener
 
                 Admin _ ->
-                    FromJs.map AdminMsg Admin.incomingPortsListener
+                    FromJs.map AdminZpr Admin.incomingPortsListener
     in
     [ Session.listener
-        |> FromJs.map SessionMsg
+        |> FromJs.map SessionZpr
     , pageListener
     ]
         |> FromJs.batch

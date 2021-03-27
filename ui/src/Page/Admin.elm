@@ -1,13 +1,13 @@
 module Page.Admin exposing
-    ( Model
-    , Msg
+    ( Modelka
+    , Zpr
+    , datSession
     , getLayout
     , getSession
     , handleRouteChange
     , incomingPortsListener
     , init
     , setLayout
-    , setSession
     , update
     , view
     )
@@ -31,7 +31,7 @@ import View.TextField as TextField
 ---------------------------------------------------------------
 
 
-type alias Model =
+type alias Modelka =
     { session : Session
     , layout : Layout
     , adminPassword : String
@@ -39,7 +39,7 @@ type alias Model =
     }
 
 
-type Msg
+type Zpr
     = PasswordFieldUpdated String
 
 
@@ -53,7 +53,7 @@ type NavItem
 --------------------------------------------------------------------------------
 
 
-init : Session -> Layout -> Route -> Model
+init : Session -> Layout -> Route -> Modelka
 init session layout route =
     let
         ( adminPassword, maybeError ) =
@@ -74,9 +74,9 @@ init session layout route =
 --------------------------------------------------------------------------------
 
 
-handleRouteChange : Route -> Model -> Model
+handleRouteChange : Route -> Modelka -> Modelka
 handleRouteChange route =
-    setNavItem (routeToNavItem route)
+    datNavItem (routeToNavItem route)
 
 
 
@@ -85,27 +85,27 @@ handleRouteChange route =
 --------------------------------------------------------------------------------
 
 
-mapSession : (Session -> Session) -> Model -> Model
+mapSession : (Session -> Session) -> Modelka -> Modelka
 mapSession f model =
-    setSession (f <| getSession model) model
+    datSession (f <| getSession model) model
 
 
-setSession : Session -> Model -> Model
-setSession session model =
+datSession : Session -> Modelka -> Modelka
+datSession session model =
     { model | session = session }
 
 
-getSession : Model -> Session
+getSession : Modelka -> Session
 getSession model =
     model.session
 
 
-getLayout : Model -> Layout
+getLayout : Modelka -> Layout
 getLayout model =
     model.layout
 
 
-setLayout : Layout -> Model -> Model
+setLayout : Layout -> Modelka -> Modelka
 setLayout layout model =
     { model | layout = layout }
 
@@ -130,13 +130,13 @@ navItemToLabel navItem =
             "Blog"
 
 
-setPasswordField : String -> Model -> Model
+setPasswordField : String -> Modelka -> Modelka
 setPasswordField newField model =
     { model | adminPassword = newField }
 
 
-setNavItem : NavItem -> Model -> Model
-setNavItem navItem model =
+datNavItem : NavItem -> Modelka -> Modelka
+datNavItem navItem model =
     { model | navItem = navItem }
 
 
@@ -158,11 +158,11 @@ navItems =
 --------------------------------------------------------------------------------
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
+update msg modelka =
     case msg of
         PasswordFieldUpdated str ->
-            ( model
+            ( modelka
                 |> setPasswordField str
                 |> mapSession (Session.setAdminPassword str)
             , Admin.save str
@@ -175,17 +175,17 @@ update msg model =
 --------------------------------------------------------------------------------
 
 
-view : Model -> List (Cell Msg)
-view model =
-    [ nav model.navItem
-    , body model
+view : Modelka -> List (Cell Zpr)
+view modelka =
+    [ nav modelka.navItem
+    , body modelka
     ]
 
 
-nav : NavItem -> Cell Msg
+nav : NavItem -> Cell Zpr
 nav activeNavItem =
     let
-        navItemView : NavItem -> Row Msg
+        navItemView : NavItem -> Row Zpr
         navItemView navItem =
             Button.fromLabel
                 (navItemToLabel navItem)
@@ -200,15 +200,15 @@ nav activeNavItem =
         |> Cell.withExactWidth (Size.extraLarge 4)
 
 
-body : Model -> Cell Msg
-body model =
+body : Modelka -> Cell Zpr
+body modelka =
     [ Row.fromString "Admin Panel"
     , Row.fromCells
         [ Cell.fromString "Admin Password"
             |> Cell.withExactWidth (Size.extraLarge 4)
             |> Cell.verticallyCenterContent
         , TextField.simple
-            model.adminPassword
+            modelka.adminPassword
             PasswordFieldUpdated
             |> TextField.toCell
             |> Cell.withExactWidth (Size.extraLarge 5)
@@ -224,6 +224,6 @@ body model =
 --------------------------------------------------------------------------------
 
 
-incomingPortsListener : FromJs.Listener Msg
+incomingPortsListener : FromJs.Listener Zpr
 incomingPortsListener =
     FromJs.none

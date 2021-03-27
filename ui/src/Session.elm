@@ -1,6 +1,6 @@
 module Session exposing
-    ( Msg
-    , Session
+    ( Session
+    , Zpr
     , adminMode
     , goTo
     , init
@@ -39,7 +39,7 @@ type Error
     | StorageDecodeError Decode.Error
 
 
-type Msg
+type Zpr
     = StorageUpdated Storage
 
 
@@ -103,7 +103,7 @@ recordError error session =
 ---------------------------------------------------------------
 
 
-update : Msg -> Session -> Session
+update : Zpr -> Session -> Session
 update msg session =
     case msg of
         StorageUpdated storage ->
@@ -158,6 +158,6 @@ goTo session route =
 ---------------------------------------------------------------
 
 
-listener : FromJs.Listener Msg
+listener : FromJs.Listener Zpr
 listener =
     Storage.listener StorageUpdated
