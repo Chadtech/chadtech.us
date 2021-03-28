@@ -1,0 +1,2 @@
+ALTER TABLE blogpostv2
+ADD COLUMN title VARCHAR(15) AFTER id;

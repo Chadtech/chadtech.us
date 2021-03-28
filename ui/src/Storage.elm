@@ -1,9 +1,9 @@
 module Storage exposing
     ( Storage
+    , dat
     , decoder
-    , get
     , listener
-    , set
+    , ziskat
     )
 
 import Dict exposing (Dict)
@@ -29,8 +29,8 @@ type Storage
 --------------------------------------------------------------------------------
 
 
-get : String -> Decoder a -> Storage -> Result Decode.Error (Maybe a)
-get key valueDecoder (Storage storage) =
+ziskat : String -> Decoder a -> Storage -> Result Decode.Error (Maybe a)
+ziskat key valueDecoder (Storage storage) =
     case Dict.get key storage of
         Just json ->
             Result.map Just <|
@@ -40,8 +40,8 @@ get key valueDecoder (Storage storage) =
             Ok Nothing
 
 
-set : String -> Encode.Value -> Cmd msg
-set key value =
+dat : String -> Encode.Value -> Cmd msg
+dat key value =
     ToJs.type_ "setStorage"
         |> ToJs.fieldsBody
             [ Tuple.pair "value" value

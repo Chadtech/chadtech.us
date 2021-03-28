@@ -10,10 +10,10 @@ import Page.Admin as Admin
 import Page.Blog as Blog
 import Ports.FromJs as FromJs
 import Route exposing (Route)
-import Session exposing (Session)
 import Url exposing (Url)
 import Util.Cmd as CmdUtil
 import View.Cell as Cell exposing (Cell)
+import Zasedani exposing (Zasedani)
 
 
 
@@ -73,7 +73,7 @@ superUpdate msg result =
 
 
 type Modelka
-    = PageNotFound Session Layout
+    = PageNotFound Zasedani Layout
     | Blog Blog.Modelka
     | Admin Admin.Modelka
 
@@ -87,7 +87,7 @@ type Zpr
     | BlogZpr Blog.Zpr
     | AdminZpr Admin.Zpr
     | OpenAdminPanelPressed
-    | SessionZpr Session.Zpr
+    | ZasedaniZpr Zasedani.Zpr
 
 
 type Error
@@ -102,7 +102,7 @@ type Error
 
 poca : Decode.Value -> Url -> Nav.Key -> ( Result Error Modelka, Cmd Zpr )
 poca json url navKey =
-    case Session.init json navKey of
+    case Zasedani.poca json navKey of
         Ok session ->
             let
                 route : Maybe Route
@@ -123,35 +123,35 @@ poca json url navKey =
 --------------------------------------------------------------------------------
 
 
-getSession : Modelka -> Session
-getSession model =
+ziskatZasedani : Modelka -> Zasedani
+ziskatZasedani model =
     case model of
-        PageNotFound session _ ->
-            session
+        PageNotFound zasedani _ ->
+            zasedani
 
         Blog subModelka ->
-            Blog.getSession subModelka
+            Blog.ziskatZasedani subModelka
 
         Admin subModelka ->
-            Admin.getSession subModelka
+            Admin.ziskatSession subModelka
 
 
-datSession : Session -> Modelka -> Modelka
-datSession session model =
+datZasedani : Zasedani -> Modelka -> Modelka
+datZasedani zasedani model =
     case model of
         PageNotFound _ layout ->
-            PageNotFound session layout
+            PageNotFound zasedani layout
 
         Blog subModel ->
-            Blog <| Blog.setSession session subModel
+            Blog <| Blog.setSession zasedani subModel
 
         Admin subModel ->
-            Admin <| Admin.datSession session subModel
+            Admin <| Admin.datSession zasedani subModel
 
 
-mapSession : (Session -> Session) -> Modelka -> Modelka
-mapSession f model =
-    datSession (f <| getSession model) model
+mapZasedani : (Zasedani -> Zasedani) -> Modelka -> Modelka
+mapZasedani f model =
+    datZasedani (f <| ziskatZasedani model) model
 
 
 getLayout : Modelka -> Layout
@@ -194,9 +194,9 @@ mapLayout f model =
 update : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
 update msg modelka =
     let
-        session : Session
-        session =
-            getSession modelka
+        zasedani : Zasedani
+        zasedani =
+            ziskatZasedani modelka
 
         layout : Layout
         layout =
@@ -213,7 +213,7 @@ update msg modelka =
                     case Route.fromUrl url of
                         Just route ->
                             ( modelka
-                            , Session.goTo session route
+                            , Zasedani.goTo zasedani route
                             )
 
                         Nothing ->
@@ -241,12 +241,12 @@ update msg modelka =
         OpenAdminPanelPressed ->
             let
                 ( newSession, cmd ) =
-                    Session.turnOnAdminMode session
+                    Zasedani.turnOnAdminMode zasedani
             in
-            ( datSession newSession modelka
+            ( datZasedani newSession modelka
             , Cmd.batch
                 [ cmd
-                , Session.goTo session Route.admin
+                , Zasedani.goTo zasedani Route.admin
                 ]
             )
 
@@ -259,8 +259,8 @@ update msg modelka =
                 _ ->
                     modelka |> CmdUtil.withNoCmd
 
-        SessionZpr subZpr ->
-            ( mapSession (Session.update subZpr) modelka
+        ZasedaniZpr subZpr ->
+            ( mapZasedani (Zasedani.update subZpr) modelka
             , Cmd.none
             )
 
@@ -275,9 +275,9 @@ superHandleRouteChange maybeRoute modelka =
 handleRouteChange : Maybe Route -> Modelka -> ( Modelka, Cmd Zpr )
 handleRouteChange maybeRoute modelka =
     let
-        session : Session
+        session : Zasedani
         session =
-            getSession modelka
+            ziskatZasedani modelka
 
         layout : Layout
         layout =
@@ -318,7 +318,7 @@ handleRouteChange maybeRoute modelka =
                             )
 
                         _ ->
-                            if Session.adminMode session /= Nothing then
+                            if Zasedani.adminMode session /= Nothing then
                                 Admin.init session layout subRoute
                                     |> Admin
                                     |> CmdUtil.withNoCmd
@@ -354,9 +354,9 @@ view model =
         layout =
             getLayout model
 
-        session : Session
+        session : Zasedani
         session =
-            getSession model
+            ziskatZasedani model
     in
     body
         |> Layout.view session layout
@@ -402,8 +402,8 @@ incomingPortsListeners model =
                 Admin _ ->
                     FromJs.map AdminZpr Admin.incomingPortsListener
     in
-    [ Session.listener
-        |> FromJs.map SessionZpr
+    [ Zasedani.listener
+        |> FromJs.map ZasedaniZpr
     , pageListener
     ]
         |> FromJs.batch

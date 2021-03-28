@@ -3,13 +3,13 @@ module Page.Admin exposing
     , Zpr
     , datSession
     , getLayout
-    , getSession
     , handleRouteChange
     , incomingPortsListener
     , init
     , setLayout
     , update
     , view
+    , ziskatSession
     )
 
 import Admin
@@ -17,22 +17,22 @@ import Layout exposing (Layout)
 import Ports.FromJs as FromJs
 import Route
 import Route.Admin as AdminRoute exposing (Route)
-import Session exposing (Session)
 import Style.Size as Size
 import View.Button as Button
 import View.Cell as Cell exposing (Cell)
 import View.Row as Row exposing (Row)
 import View.TextField as TextField
+import Zasedani exposing (Zasedani)
 
 
 
 ---------------------------------------------------------------
--- TYPES --
+-- TYPY --
 ---------------------------------------------------------------
 
 
 type alias Modelka =
-    { session : Session
+    { session : Zasedani
     , layout : Layout
     , adminPassword : String
     , navItem : NavItem
@@ -53,7 +53,7 @@ type NavItem
 --------------------------------------------------------------------------------
 
 
-init : Session -> Layout -> Route -> Modelka
+init : Zasedani -> Layout -> Route -> Modelka
 init session layout route =
     let
         ( adminPassword, maybeError ) =
@@ -61,7 +61,7 @@ init session layout route =
     in
     { session =
         session
-            |> Session.recordStorageDecodeError maybeError
+            |> Zasedani.recordStorageDecodeError maybeError
     , layout = layout
     , adminPassword = Maybe.withDefault "" adminPassword
     , navItem = routeToNavItem route
@@ -85,18 +85,18 @@ handleRouteChange route =
 --------------------------------------------------------------------------------
 
 
-mapSession : (Session -> Session) -> Modelka -> Modelka
+mapSession : (Zasedani -> Zasedani) -> Modelka -> Modelka
 mapSession f model =
-    datSession (f <| getSession model) model
+    datSession (f <| ziskatSession model) model
 
 
-datSession : Session -> Modelka -> Modelka
+datSession : Zasedani -> Modelka -> Modelka
 datSession session model =
     { model | session = session }
 
 
-getSession : Modelka -> Session
-getSession model =
+ziskatSession : Modelka -> Zasedani
+ziskatSession model =
     model.session
 
 
@@ -164,7 +164,7 @@ update msg modelka =
         PasswordFieldUpdated str ->
             ( modelka
                 |> setPasswordField str
-                |> mapSession (Session.setAdminPassword str)
+                |> mapSession (Zasedani.setAdminPassword str)
             , Admin.save str
             )
 

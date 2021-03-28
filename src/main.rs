@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate juniper;
+#[macro_use]
+extern crate diesel;
 extern crate r2d2;
 extern crate r2d2_mysql;
 extern crate serde_json;
@@ -20,6 +22,7 @@ mod blogposts;
 mod db;
 mod flags;
 mod graphql_schema;
+mod schema;
 
 ////////////////////////////////////////////////////////////////////////////////
 // TYPES //
@@ -30,14 +33,14 @@ struct Modelka {
     pub ip_address: String,
     pub admin_password: String,
     pub port_number: u64,
-    pub setting: Okoli,
+    pub okoli: Okoli,
 }
 
 impl Modelka {
     fn poca() -> Result<Modelka, String> {
         let flags = Flags::poca()?;
 
-        let setting: Okoli = if flags.dev_mode {
+        let okoli: Okoli = if flags.dev_mode {
             Okoli::Dev(DevModelka {
                 show_elm_output: flags.show_elm_output,
             })
@@ -52,7 +55,7 @@ impl Modelka {
             ip_address: flags.ip_address,
             admin_password: flags.admin_password,
             port_number: flags.port_number,
-            setting,
+            okoli,
         })
     }
 }
@@ -84,18 +87,18 @@ async fn main() -> Result<(), String> {
 
     let model = Modelka::poca()?;
 
-    let dev_mode = if let Okoli::Prod(_) = model.setting {
+    let dev_mode = if let Okoli::Prod(_) = model.okoli {
         false
     } else {
         true
     };
 
     write_frontend_api_code(&model).map_err(|err| err.to_string())?;
-    compile_elm(&model.setting)?;
+    compile_elm(&model.okoli)?;
     compile_js(dev_mode)?;
 
     if dev_mode {
-        let setting = model.setting.clone();
+        let setting = model.okoli.clone();
         thread::spawn(move || {
             watch_and_recompile_ui(&setting);
         });
@@ -211,7 +214,7 @@ async fn graphql(
 }
 
 async fn elm_asset_route(model: web::Data<Modelka>) -> HttpResponse {
-    match &model.get_ref().setting {
+    match &model.get_ref().okoli {
         Okoli::Dev(_) => match read_elm_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
             Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
@@ -224,7 +227,7 @@ async fn elm_asset_route(model: web::Data<Modelka>) -> HttpResponse {
 }
 
 async fn js_asset_route(model: web::Data<Modelka>) -> HttpResponse {
-    match &model.get_ref().setting {
+    match &model.get_ref().okoli {
         Okoli::Dev(_) => match read_js_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
             Err(error) => HttpResponse::InternalServerError().body(error.to_string()),
@@ -245,7 +248,7 @@ async fn frontend() -> HttpResponse {
 ////////////////////////////////////////////////////////////////////////////////
 
 fn write_frontend_api_code(model: &Modelka) -> std::io::Result<()> {
-    let url = match &model.setting {
+    let url = match &model.okoli {
         Okoli::Dev(_) => {
             let mut buf = String::new();
 

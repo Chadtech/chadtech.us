@@ -7,13 +7,13 @@ module Layout exposing
 
 import Document exposing (Document)
 import Route exposing (Route)
-import Session exposing (Session)
 import Style.Color as Color
 import Style.Padding as Padding
 import Style.Size as Size exposing (Size)
 import View.Button as Button exposing (Button)
 import View.Cell as Cell exposing (Cell)
 import View.Row as Row exposing (Row)
+import Zasedani exposing (Zasedani)
 
 
 
@@ -49,7 +49,7 @@ allNavItems =
     ]
 
 
-navigation : Session -> Maybe NavItem -> Cell msg
+navigation : Zasedani -> Maybe NavItem -> Cell msg
 navigation session activeNavItem =
     let
         toLabel : NavItem -> String
@@ -106,7 +106,7 @@ navigation session activeNavItem =
                     True
 
                 Admin ->
-                    Session.adminMode session /= Nothing
+                    Zasedani.adminMode session /= Nothing
     in
     allNavItems
         |> List.filter showNavItem
@@ -167,7 +167,7 @@ init route =
     { activeNav = Maybe.map routeToNavItem route }
 
 
-view : Session -> Layout -> List (Cell msg) -> Document msg
+view : Zasedani -> Layout -> List (Cell msg) -> Document msg
 view session layout body =
     [ headerRow
     , (navigation session layout.activeNav :: body)

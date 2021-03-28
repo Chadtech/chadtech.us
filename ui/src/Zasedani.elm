@@ -1,10 +1,10 @@
-module Session exposing
-    ( Session
+module Zasedani exposing
+    ( Zasedani
     , Zpr
     , adminMode
     , goTo
-    , init
     , listener
+    , poca
     , recordStorageDecodeError
     , setAdminPassword
     , turnOnAdminMode
@@ -26,7 +26,7 @@ import Util.Maybe as MaybeUtil
 ---------------------------------------------------------------
 
 
-type alias Session =
+type alias Zasedani =
     { navKey : Nav.Key
     , adminMode : Maybe String
     , storage : Storage
@@ -53,10 +53,10 @@ type alias Flags =
     { storage : Storage }
 
 
-init : Decode.Value -> Nav.Key -> Result Decode.Error Session
-init json navKey =
+poca : Decode.Value -> Nav.Key -> Result Decode.Error Zasedani
+poca json navKey =
     let
-        fromFlags : Flags -> Session
+        fromFlags : Flags -> Zasedani
         fromFlags flags =
             let
                 ( adminPassword, adminError ) =
@@ -87,14 +87,14 @@ init json navKey =
 ---------------------------------------------------------------
 
 
-setStorage : Storage -> Session -> Session
-setStorage storage session =
-    { session | storage = storage }
+setStorage : Storage -> Zasedani -> Zasedani
+setStorage storage zasedani =
+    { zasedani | storage = storage }
 
 
-recordError : Error -> Session -> Session
-recordError error session =
-    { session | errors = error :: session.errors }
+recordError : Error -> Zasedani -> Zasedani
+recordError error zasedani =
+    { zasedani | errors = error :: zasedani.errors }
 
 
 
@@ -103,11 +103,11 @@ recordError error session =
 ---------------------------------------------------------------
 
 
-update : Zpr -> Session -> Session
-update msg session =
+update : Zpr -> Zasedani -> Zasedani
+update msg zasedani =
     case msg of
         StorageUpdated storage ->
-            setStorage storage session
+            setStorage storage zasedani
 
 
 
@@ -116,40 +116,40 @@ update msg session =
 ---------------------------------------------------------------
 
 
-recordStorageDecodeError : Maybe Decode.Error -> Session -> Session
-recordStorageDecodeError maybeError session =
+recordStorageDecodeError : Maybe Decode.Error -> Zasedani -> Zasedani
+recordStorageDecodeError maybeError zasedani =
     case maybeError of
         Just error ->
-            recordError (StorageDecodeError error) session
+            recordError (StorageDecodeError error) zasedani
 
         Nothing ->
-            session
+            zasedani
 
 
-adminMode : Session -> Maybe String
-adminMode session =
-    session.adminMode
+adminMode : Zasedani -> Maybe String
+adminMode zasedani =
+    zasedani.adminMode
 
 
-turnOnAdminMode : Session -> ( Session, Cmd msg )
-turnOnAdminMode session =
+turnOnAdminMode : Zasedani -> ( Zasedani, Cmd msg )
+turnOnAdminMode zasedani =
     let
         ( initValue, cmd ) =
-            Admin.init
+            Admin.poca
     in
-    ( { session | adminMode = Just initValue }
+    ( { zasedani | adminMode = Just initValue }
     , cmd
     )
 
 
-setAdminPassword : String -> Session -> Session
-setAdminPassword str session =
-    { session | adminMode = Just str }
+setAdminPassword : String -> Zasedani -> Zasedani
+setAdminPassword str zasedani =
+    { zasedani | adminMode = Just str }
 
 
-goTo : Session -> Route -> Cmd msg
-goTo session route =
-    Nav.pushUrl session.navKey (Route.toString route)
+goTo : Zasedani -> Route -> Cmd msg
+goTo zasedani route =
+    Nav.pushUrl zasedani.navKey (Route.toString route)
 
 
 

@@ -1,0 +1,3 @@
+CREATE TABLE blogpostv2 (
+  id INTEGER PRIMARY KEY
+);

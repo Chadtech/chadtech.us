@@ -1,4 +1,8 @@
-module Admin exposing (fromStorage, init, save)
+module Admin exposing
+    ( fromStorage
+    , poca
+    , save
+    )
 
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -24,7 +28,7 @@ key =
 
 fromStorage : Storage -> ( Maybe String, Maybe Decode.Error )
 fromStorage storage =
-    case Storage.get key Decode.string storage of
+    case Storage.ziskat key Decode.string storage of
         Ok maybePassword ->
             ( maybePassword, Nothing )
 
@@ -32,8 +36,8 @@ fromStorage storage =
             ( Nothing, Just error )
 
 
-init : ( String, Cmd msg )
-init =
+poca : ( String, Cmd msg )
+poca =
     let
         initValue : String
         initValue =
@@ -44,4 +48,4 @@ init =
 
 save : String -> Cmd msg
 save value =
-    Storage.set key <| Encode.string value
+    Storage.dat key <| Encode.string value

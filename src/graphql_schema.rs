@@ -2,6 +2,8 @@ use juniper::{FieldError, FieldResult, RootNode};
 
 use crate::blogposts;
 use crate::db::Pool;
+use diesel::result::Error;
+use diesel::RunQueryDsl;
 use mysql::{params, Error as DBError, Row};
 
 pub struct Context {
@@ -30,38 +32,61 @@ impl Mutation {
         title: String,
         content: String,
     ) -> juniper::FieldResult<blogposts::v2::Post> {
+        use crate::schema::blogpostv2;
         let mut conn = ctx.db_pool.get().unwrap();
 
-        let new_id = 0;
+        let new_post = blogposts::v2::New {
+            title: title.as_str(),
+        };
 
-        let insert : Result<Option<Row>, DBError>  = conn.first_exec(
-            "INSERT INTO blostpostv2(id, date, title, content) VALUES(:id, :date, :title, :content)",
-            params! {
-                "id" => &new_id,
-                "date" => &date,
-                "title" => &title,
-                "content" => &content
-            }
-        );
+        let insert_result = diesel::insert_into(blogpostv2::table)
+            .values(&new_post)
+            .get_result(&conn);
 
-        match insert {
-            Ok(opt_row) => Ok(blogposts::v2::Post {
-                id: new_id,
-                date,
-                title,
-                content,
-            }),
+        match insert_result {
+            Ok(new_blogpost) => Ok(new_blogpost),
             Err(err) => {
-                let msg = match err {
-                    DBError::MySqlError(sql_err) => sql_err.message,
-                    _ => "internal error".to_owned(),
-                };
+                let msg = err.to_string();
                 Err(FieldError::new(
                     "Failed to create new user",
                     graphql_value!({ "internal_error": msg }),
                 ))
             }
         }
+        // .get_result(conn)
+        // .expect("Error saving new post")
+        // let mut conn = ctx.db_pool.get().unwrap();
+        //
+        // let new_id = 0;
+        //
+        // let insert : Result<Option<Row>, DBError>  = conn.first_exec(
+        //     "INSERT INTO blostpostv2(id, date, title, content) VALUES(:id, :date, :title, :content)",
+        //     params! {
+        //         "id" => &new_id,
+        //         "date" => &date,
+        //         "title" => &title,
+        //         "content" => &content
+        //     }
+        // );
+        //
+        // match insert {
+        //     Ok(opt_row) => Ok(blogposts::v2::Post {
+        //         id: new_id,
+        //         // date,
+        //         // title,
+        //         // content,
+        //     }),
+        //     Err(err) => {
+        //         let msg = match err {
+        //             DBError::MySqlError(sql_err) => sql_err.message,
+        //             _ => "internal error".to_owned(),
+        //         };
+        //         Err(FieldError::new(
+        //             "Failed to create new user",
+        //             graphql_value!({ "internal_error": msg }),
+        //         ))
+        //     }
+        // }
     }
 }
 

@@ -2,21 +2,21 @@ module Page.Blog exposing
     ( Modelka
     , Zpr
     , getLayout
-    , getSession
     , incomingPortsListener
     , init
     , setLayout
     , setSession
     , update
     , view
+    , ziskatZasedani
     )
 
 import Layout exposing (Layout)
 import Ports.FromJs as FromJs
-import Session exposing (Session)
 import Style.Color as Color
 import Style.Size as Size
 import View.Cell as Cell exposing (Cell)
+import Zasedani exposing (Zasedani)
 
 
 
@@ -26,7 +26,7 @@ import View.Cell as Cell exposing (Cell)
 
 
 type alias Modelka =
-    { session : Session
+    { session : Zasedani
     , layout : Layout
     }
 
@@ -41,7 +41,7 @@ type Zpr
 --------------------------------------------------------------------------------
 
 
-init : Session -> Layout -> Modelka
+init : Zasedani -> Layout -> Modelka
 init session layout =
     { session = session
     , layout = layout
@@ -54,13 +54,13 @@ init session layout =
 --------------------------------------------------------------------------------
 
 
-setSession : Session -> Modelka -> Modelka
+setSession : Zasedani -> Modelka -> Modelka
 setSession session model =
     { model | session = session }
 
 
-getSession : Modelka -> Session
-getSession model =
+ziskatZasedani : Modelka -> Zasedani
+ziskatZasedani model =
     model.session
 
 

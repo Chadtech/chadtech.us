@@ -1,0 +1,2 @@
+ALTER TABLE blogpostv2
+DROP COLUMN title;
