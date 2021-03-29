@@ -2,49 +2,89 @@ use juniper::{FieldError, FieldResult, RootNode};
 
 use crate::blogposts;
 use crate::db::Pool;
+use crate::schema::blogpostv2;
 use diesel::result::Error;
-use diesel::RunQueryDsl;
+use diesel::{QueryDsl, RunQueryDsl};
 use mysql::{params, Error as DBError, Row};
 
-pub struct Context {
+pub struct Kontext {
     pub db_pool: Pool,
 }
 
-impl juniper::Context for Context {}
+impl juniper::Context for Kontext {}
 
 pub struct Query;
 
-#[juniper::object(Context = Context)]
+#[juniper::object(Context = Kontext)]
 impl Query {
     #[graphql(description = "List of all version 2 blog posts")]
-    fn blogposts_v2(context: &Context) -> FieldResult<Vec<blogposts::v2::Post>> {
-        Ok(Vec::new())
+    fn blogposts_v2(ktx: &Kontext) -> FieldResult<Vec<blogposts::v2::Post>> {
+        use crate::schema::blogpostv2::dsl::*;
+        let conn = ktx.db_pool.get()?;
+        let query_results = blogpostv2
+            .load::<blogposts::v2::Post>(&conn)
+            .expect("Error querying posts");
+
+        Ok(query_results)
     }
 }
 
 pub struct Mutation;
 
-#[juniper::object(Context = Context)]
+#[juniper::object(Context = Kontext)]
 impl Mutation {
     fn create_blogpost_v2(
-        ctx: &Context,
+        ktx: &Kontext,
         date: f64,
         title: String,
         content: String,
     ) -> juniper::FieldResult<blogposts::v2::Post> {
         use crate::schema::blogpostv2;
-        let mut conn = ctx.db_pool.get().unwrap();
+        use diesel::sql_types::BigInt;
+        let conn = ktx.db_pool.get()?;
+
+        #[derive(QueryableByName)]
+        struct CountQuery {
+            #[sql_type = "BigInt"]
+            count: i64,
+        }
+
+        let count_query = diesel::sql_query(r#"SELECT COUNT(*) AS count FROM blogpostv2;"#)
+            .load::<CountQuery>(&conn)
+            .expect("Query failed")
+            .pop()
+            .expect("No Count Query");
 
         let new_post = blogposts::v2::New {
+            id: count_query.count as i32,
             title: title.as_str(),
         };
 
         let insert_result = diesel::insert_into(blogpostv2::table)
             .values(&new_post)
-            .get_result(&conn);
+            .execute(&conn);
 
         match insert_result {
-            Ok(new_blogpost) => Ok(new_blogpost),
+            Ok(n) => {
+                if n == 1 {
+                    // TODO re-query post
+                    Ok(blogposts::v2::Post {
+                        id: new_post.id,
+                        title: new_post.title.to_string(),
+                    })
+                } else {
+                    let mut buf = String::new();
+
+                    buf.push_str("Inserted ");
+                    buf.push_str(n.to_string().as_str());
+                    buf.push_str(" rows");
+
+                    Err(FieldError::new(
+                        "Failed to create new user",
+                        graphql_value!({ "internal_error": buf }),
+                    ))
+                }
+            }
             Err(err) => {
                 let msg = err.to_string();
                 Err(FieldError::new(
@@ -53,40 +93,6 @@ impl Mutation {
                 ))
             }
         }
-        // .get_result(conn)
-        // .expect("Error saving new post")
-        // let mut conn = ctx.db_pool.get().unwrap();
-        //
-        // let new_id = 0;
-        //
-        // let insert : Result<Option<Row>, DBError>  = conn.first_exec(
-        //     "INSERT INTO blostpostv2(id, date, title, content) VALUES(:id, :date, :title, :content)",
-        //     params! {
-        //         "id" => &new_id,
-        //         "date" => &date,
-        //         "title" => &title,
-        //         "content" => &content
-        //     }
-        // );
-        //
-        // match insert {
-        //     Ok(opt_row) => Ok(blogposts::v2::Post {
-        //         id: new_id,
-        //         // date,
-        //         // title,
-        //         // content,
-        //     }),
-        //     Err(err) => {
-        //         let msg = match err {
-        //             DBError::MySqlError(sql_err) => sql_err.message,
-        //             _ => "internal error".to_owned(),
-        //         };
-        //         Err(FieldError::new(
-        //             "Failed to create new user",
-        //             graphql_value!({ "internal_error": msg }),
-        //         ))
-        //     }
-        // }
     }
 }
 

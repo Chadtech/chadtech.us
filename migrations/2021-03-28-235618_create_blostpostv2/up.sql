@@ -1,0 +1,4 @@
+CREATE TABLE blogpostv2 (
+  id INTEGER PRIMARY KEY,
+  title VARCHAR(256) NOT NULL
+);

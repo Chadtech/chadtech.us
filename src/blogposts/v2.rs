@@ -13,5 +13,6 @@ pub struct Post {
 #[derive(Insertable)]
 #[table_name = "blogpostv2"]
 pub struct New<'a> {
+    pub id: i32,
     pub title: &'a str,
 }

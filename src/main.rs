@@ -8,7 +8,7 @@ extern crate serde_json;
 
 use crate::db::Pool;
 use crate::flags::Flags;
-use crate::graphql_schema::{create_schema, Context, Schema};
+use crate::graphql_schema::{create_schema, Schema};
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
@@ -197,12 +197,12 @@ async fn graphql(
     // model: web::Data<Arc<Model>>,
     req: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let ctx = Context {
+    let ktx = graphql_schema::Kontext {
         db_pool: pool.get_ref().to_owned(),
     };
 
     let user = web::block(move || {
-        let res = req.execute(&schema, &ctx);
+        let res = req.execute(&schema, &ktx);
         Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
     })
     .await
