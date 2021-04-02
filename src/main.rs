@@ -274,10 +274,10 @@ fn write_frontend_api_code(model: &Modelka) -> std::io::Result<()> {
     )
 }
 
-fn compile_elm(setting: &Okoli) -> Result<(), String> {
-    match setting {
-        Okoli::Dev(dev_model) => {
-            if dev_model.show_elm_output {
+fn compile_elm(okoli: &Okoli) -> Result<(), String> {
+    match okoli {
+        Okoli::Dev(dev_modelka) => {
+            if dev_modelka.show_elm_output {
                 clear_terminal();
 
                 Command::new("elm")

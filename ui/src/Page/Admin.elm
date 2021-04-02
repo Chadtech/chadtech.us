@@ -5,11 +5,11 @@ module Page.Admin exposing
     , getLayout
     , handleRouteChange
     , incomingPortsListener
-    , init
+    , poca
     , setLayout
-    , update
     , view
     , ziskatSession
+    , zmodernizovat
     )
 
 import Admin
@@ -32,7 +32,7 @@ import Zasedani exposing (Zasedani)
 
 
 type alias Modelka =
-    { session : Zasedani
+    { zasedani : Zasedani
     , layout : Layout
     , adminPassword : String
     , navItem : NavItem
@@ -49,18 +49,18 @@ type NavItem
 
 
 --------------------------------------------------------------------------------
--- INIT --
+-- POCA --
 --------------------------------------------------------------------------------
 
 
-init : Zasedani -> Layout -> Route -> Modelka
-init session layout route =
+poca : Zasedani -> Layout -> Route -> Modelka
+poca zasedani layout route =
     let
         ( adminPassword, maybeError ) =
-            Admin.fromStorage session.storage
+            Admin.fromStorage zasedani.storage
     in
-    { session =
-        session
+    { zasedani =
+        zasedani
             |> Zasedani.recordStorageDecodeError maybeError
     , layout = layout
     , adminPassword = Maybe.withDefault "" adminPassword
@@ -92,12 +92,12 @@ mapSession f model =
 
 datSession : Zasedani -> Modelka -> Modelka
 datSession session model =
-    { model | session = session }
+    { model | zasedani = session }
 
 
 ziskatSession : Modelka -> Zasedani
 ziskatSession model =
-    model.session
+    model.zasedani
 
 
 getLayout : Modelka -> Layout
@@ -154,13 +154,13 @@ navItems =
 
 
 --------------------------------------------------------------------------------
--- UPDATE --
+-- ZMODERNIZOVAT --
 --------------------------------------------------------------------------------
 
 
-update : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
-update msg modelka =
-    case msg of
+zmodernizovat : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
+zmodernizovat zpr modelka =
+    case zpr of
         PasswordFieldUpdated str ->
             ( modelka
                 |> setPasswordField str

@@ -59,7 +59,7 @@ superUpdate : Zpr -> Result Error Modelka -> ( Result Error Modelka, Cmd Zpr )
 superUpdate msg result =
     case result of
         Ok model ->
-            update msg model
+            zmodernizovat msg model
                 |> Tuple.mapFirst Ok
 
         Err error ->
@@ -96,7 +96,7 @@ type Error
 
 
 --------------------------------------------------------------------------------
--- INIT --
+-- POCA --
 --------------------------------------------------------------------------------
 
 
@@ -143,7 +143,7 @@ datZasedani zasedani model =
             PageNotFound zasedani layout
 
         Blog subModel ->
-            Blog <| Blog.setSession zasedani subModel
+            Blog <| Blog.datZasedani zasedani subModel
 
         Admin subModel ->
             Admin <| Admin.datSession zasedani subModel
@@ -181,18 +181,18 @@ setLayout layout model =
 
 
 mapLayout : (Layout -> Layout) -> Modelka -> Modelka
-mapLayout f model =
-    setLayout (f <| getLayout model) model
+mapLayout f modelka =
+    setLayout (f <| getLayout modelka) modelka
 
 
 
 --------------------------------------------------------------------------------
--- UPDATE --
+-- ZMODERNIZOVAT --
 --------------------------------------------------------------------------------
 
 
-update : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
-update msg modelka =
+zmodernizovat : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
+zmodernizovat zpr modelka =
     let
         zasedani : Zasedani
         zasedani =
@@ -202,7 +202,7 @@ update msg modelka =
         layout =
             getLayout modelka
     in
-    case msg of
+    case zpr of
         MsgDecodeFailed _ ->
             modelka
                 |> CmdUtil.withNoCmd
@@ -231,7 +231,7 @@ update msg modelka =
         BlogZpr subZpr ->
             case modelka of
                 Blog subModelka ->
-                    Blog.update subZpr subModelka
+                    Blog.zmodernizovat subZpr subModelka
                         |> CmdUtil.mapBoth Blog BlogZpr
 
                 _ ->
@@ -250,10 +250,10 @@ update msg modelka =
                 ]
             )
 
-        AdminZpr subMsg ->
+        AdminZpr subZpr ->
             case modelka of
                 Admin subModelka ->
-                    Admin.update subMsg subModelka
+                    Admin.zmodernizovat subZpr subModelka
                         |> CmdUtil.mapBoth Admin AdminZpr
 
                 _ ->
@@ -296,7 +296,7 @@ handleRouteChange maybeRoute modelka =
             let
                 initBlog : () -> ( Modelka, Cmd Zpr )
                 initBlog _ =
-                    ( Blog <| Blog.init session layout
+                    ( Blog <| Blog.poca session layout
                     , Cmd.none
                     )
             in
@@ -319,7 +319,7 @@ handleRouteChange maybeRoute modelka =
 
                         _ ->
                             if Zasedani.adminMode session /= Nothing then
-                                Admin.init session layout subRoute
+                                Admin.poca session layout subRoute
                                     |> Admin
                                     |> CmdUtil.withNoCmd
 

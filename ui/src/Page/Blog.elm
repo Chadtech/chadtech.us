@@ -1,14 +1,14 @@
 module Page.Blog exposing
     ( Modelka
     , Zpr
+    , datZasedani
     , getLayout
     , incomingPortsListener
-    , init
+    , poca
     , setLayout
-    , setSession
-    , update
     , view
     , ziskatZasedani
+    , zmodernizovat
     )
 
 import Layout exposing (Layout)
@@ -26,7 +26,7 @@ import Zasedani exposing (Zasedani)
 
 
 type alias Modelka =
-    { session : Zasedani
+    { zasedani : Zasedani
     , layout : Layout
     }
 
@@ -37,13 +37,13 @@ type Zpr
 
 
 --------------------------------------------------------------------------------
--- INIT --
+-- POCA --
 --------------------------------------------------------------------------------
 
 
-init : Zasedani -> Layout -> Modelka
-init session layout =
-    { session = session
+poca : Zasedani -> Layout -> Modelka
+poca zasedani layout =
+    { zasedani = zasedani
     , layout = layout
     }
 
@@ -54,14 +54,14 @@ init session layout =
 --------------------------------------------------------------------------------
 
 
-setSession : Zasedani -> Modelka -> Modelka
-setSession session model =
-    { model | session = session }
+datZasedani : Zasedani -> Modelka -> Modelka
+datZasedani zasedani model =
+    { model | zasedani = zasedani }
 
 
 ziskatZasedani : Modelka -> Zasedani
 ziskatZasedani model =
-    model.session
+    model.zasedani
 
 
 getLayout : Modelka -> Layout
@@ -76,15 +76,15 @@ setLayout layout model =
 
 
 --------------------------------------------------------------------------------
--- UPDATE --
+-- ZMODERNIZOVAT --
 --------------------------------------------------------------------------------
 
 
-update : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
-update msg model =
-    case msg of
+zmodernizovat : Zpr -> Modelka -> ( Modelka, Cmd Zpr )
+zmodernizovat zpr modelka =
+    case zpr of
         Msg ->
-            ( model, Cmd.none )
+            ( modelka, Cmd.none )
 
 
 
