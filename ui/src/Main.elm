@@ -26,7 +26,7 @@ main : Program Decode.Value (Result Error Modelka) Zpr
 main =
     { init = poca
     , view = Document.toBrowserDocument << superView
-    , update = superUpdate
+    , update = superZmodernizovat
     , subscriptions = superSubscriptions
     , onUrlRequest = UrlRequested
     , onUrlChange = RouteChanged << Route.fromUrl
@@ -55,8 +55,8 @@ superView result =
                 []
 
 
-superUpdate : Zpr -> Result Error Modelka -> ( Result Error Modelka, Cmd Zpr )
-superUpdate msg result =
+superZmodernizovat : Zpr -> Result Error Modelka -> ( Result Error Modelka, Cmd Zpr )
+superZmodernizovat msg result =
     case result of
         Ok model ->
             zmodernizovat msg model
