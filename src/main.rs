@@ -87,11 +87,7 @@ async fn main() -> Result<(), String> {
 
     let model = Modelka::poca()?;
 
-    let dev_mode = if let Okoli::Prod(_) = model.okoli {
-        false
-    } else {
-        true
-    };
+    let dev_mode = matches!(model.okoli, Okoli::Prod(_));
 
     write_frontend_api_code(&model).map_err(|err| err.to_string())?;
     compile_elm(&model.okoli)?;
@@ -113,7 +109,7 @@ async fn main() -> Result<(), String> {
             buf.push_str(model.ip_address.as_str());
         }
 
-        buf.push_str(":");
+        buf.push(':');
         buf.push_str(model.port_number.to_string().as_str());
 
         buf
@@ -373,7 +369,5 @@ fn watch_and_recompile_ui(setting: &Okoli) {
         if let Err(err) = result {
             panic!(err);
         };
-
-        ()
     }
 }

@@ -47,8 +47,8 @@ superSubscriptions result =
 superView : Result Error Modelka -> Document Zpr
 superView result =
     case result of
-        Ok model ->
-            view model
+        Ok modelka ->
+            view modelka
 
         Err error ->
             Document.fromBody

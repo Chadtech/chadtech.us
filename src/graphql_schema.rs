@@ -2,10 +2,7 @@ use juniper::{FieldError, FieldResult, RootNode};
 
 use crate::blogposts;
 use crate::db::Pool;
-use crate::schema::blogpostv2;
-use diesel::result::Error;
-use diesel::{QueryDsl, RunQueryDsl};
-use mysql::{params, Error as DBError, Row};
+use diesel::RunQueryDsl;
 
 pub struct Kontext {
     pub db_pool: Pool,

@@ -37,7 +37,7 @@ impl Flags {
                 dev_mode = true;
             };
 
-            match arg.find("=") {
+            match arg.find('=') {
                 None => match arg.as_str() {
                     "dev" => dev(),
 
