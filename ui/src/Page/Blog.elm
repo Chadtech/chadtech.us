@@ -5,8 +5,8 @@ module Page.Blog exposing
     , getLayout
     , incomingPortsListener
     , poca
+    , pohled
     , setLayout
-    , view
     , ziskatZasedani
     , zmodernizovat
     )
@@ -93,8 +93,8 @@ zmodernizovat zpr modelka =
 --------------------------------------------------------------------------------
 
 
-view : Modelka -> List (Cell Zpr)
-view model =
+pohled : Modelka -> List (Cell Zpr)
+pohled model =
     [ blogSection
     , blogNav
     ]

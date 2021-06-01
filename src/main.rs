@@ -66,6 +66,15 @@ enum Okoli {
     Dev(DevModelka),
 }
 
+impl Okoli {
+    pub fn is_dev(&self) -> bool {
+        match self {
+            Okoli::Dev(_) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone)]
 struct DevModelka {
     show_elm_output: bool,
@@ -85,18 +94,18 @@ struct ProdModelka {
 async fn main() -> Result<(), String> {
     let pool = db::get_pool("mysql://root:password@localhost/chadtechus".to_string());
 
-    let model = Modelka::poca()?;
+    let modelka = Modelka::poca()?;
 
-    let dev_mode = matches!(model.okoli, Okoli::Prod(_));
+    let dev_mode = modelka.okoli.is_dev();
 
-    write_frontend_api_code(&model).map_err(|err| err.to_string())?;
-    compile_elm(&model.okoli)?;
+    write_frontend_api_code(&modelka).map_err(|err| err.to_string())?;
+    compile_elm(&modelka.okoli)?;
     compile_js(dev_mode)?;
 
     if dev_mode {
-        let setting = model.okoli.clone();
+        let okoli = modelka.okoli.clone();
         thread::spawn(move || {
-            watch_and_recompile_ui(&setting);
+            watch_and_recompile_ui(&okoli);
         });
     };
 
@@ -106,18 +115,18 @@ async fn main() -> Result<(), String> {
         if dev_mode {
             buf.push_str("localhost");
         } else {
-            buf.push_str(model.ip_address.as_str());
+            buf.push_str(modelka.ip_address.as_str());
         }
 
         buf.push(':');
-        buf.push_str(model.port_number.to_string().as_str());
+        buf.push_str(modelka.port_number.to_string().as_str());
 
         buf
     };
 
     // Create Juniper schema
 
-    let web_model = actix_web::web::Data::new(model.clone());
+    let web_modelka = actix_web::web::Data::new(modelka.clone());
 
     let web_schema = actix_web::web::Data::new(create_schema());
     HttpServer::new(move || {
@@ -125,7 +134,7 @@ async fn main() -> Result<(), String> {
             .wrap(middleware::Logger::default())
             .data(pool.clone())
             .app_data(web_schema.clone())
-            .app_data(web_model.clone())
+            .app_data(web_modelka.clone())
             .route("/elm.js", web::get().to(elm_asset_route))
             .route("/app.js", web::get().to(js_asset_route))
             .route("/graphql", web::post().to(graphql))
@@ -342,7 +351,7 @@ fn clear_terminal() {
 // DEV //
 ////////////////////////////////////////////////////////////////////////////////
 
-fn watch_and_recompile_ui(setting: &Okoli) {
+fn watch_and_recompile_ui(okoli: &Okoli) {
     let (sender, receiver) = channel();
 
     let mut watcher = raw_watcher(sender).unwrap();
@@ -350,14 +359,14 @@ fn watch_and_recompile_ui(setting: &Okoli) {
     watcher.watch("./ui/src", RecursiveMode::Recursive).unwrap();
 
     loop {
-        let result = match receiver.recv() {
+        let result: Result<(), String> = match receiver.recv() {
             Ok(event) => match event.path {
                 None => Ok(()),
                 Some(filepath) => {
                     let file_extension = filepath.extension().and_then(|ext| ext.to_str());
 
                     match file_extension {
-                        Some("elm") => compile_elm(setting),
+                        Some("elm") => compile_elm(okoli),
                         Some("js") => compile_js(true),
                         _ => Ok(()),
                     }
@@ -367,7 +376,7 @@ fn watch_and_recompile_ui(setting: &Okoli) {
         };
 
         if let Err(err) = result {
-            panic!(err);
+            panic!("{}", err);
         };
     }
 }

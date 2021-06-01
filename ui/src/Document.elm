@@ -3,6 +3,7 @@ module Document exposing
     , fromBody
     , map
     , toBrowserDocument
+    , withDialog
     , withTitle
     )
 
@@ -27,7 +28,7 @@ import View.Row as Row exposing (Row)
 type alias Document msg =
     { title : Maybe String
     , body : List (Row msg)
-    , dialog : Maybe (Dialog msg)
+    , dialog : Dialog msg
     }
 
 
@@ -41,8 +42,13 @@ fromBody : List (Row msg) -> Document msg
 fromBody body =
     { title = Nothing
     , body = body
-    , dialog = Nothing
+    , dialog = Dialog.none
     }
+
+
+withDialog : Dialog msg -> Document msg -> Document msg
+withDialog dialog document =
+    { document | dialog = dialog }
 
 
 withTitle : String -> Document msg -> Document msg
@@ -54,7 +60,7 @@ map : (a -> msg) -> Document a -> Document msg
 map toMsg doc =
     { title = doc.title
     , body = List.map (Row.map toMsg) doc.body
-    , dialog = Maybe.map (Dialog.map toMsg) doc.dialog
+    , dialog = Dialog.map toMsg doc.dialog
     }
 
 
@@ -83,10 +89,9 @@ toBrowserDocument doc =
 
         nonPageHtml : List (Html msg)
         nonPageHtml =
-            [ Just globalStyling
-            , Maybe.map Dialog.toHtml doc.dialog
+            [ globalStyling
+            , Dialog.toHtml doc.dialog
             ]
-                |> List.filterMap identity
 
         html : List (Html msg)
         html =

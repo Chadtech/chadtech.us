@@ -4,6 +4,7 @@ module View.Cell exposing
     , fromString
     , indent
     , map
+    , none
     , pad
     , toHtml
     , verticallyCenterContent
@@ -30,8 +31,13 @@ import Util.Css as CssUtil
 --------------------------------------------------------------------------------
 
 
-type alias Cell msg =
-    { html : List (Html msg)
+type Cell zpr
+    = Visible (Modelka zpr)
+    | None
+
+
+type alias Modelka zpr =
+    { html : List (Html zpr)
     , fontColor : Maybe Color
     , padding : Maybe Padding
     , width : Width
@@ -42,12 +48,25 @@ type alias Cell msg =
     }
 
 
-
-
-
 type Width
     = Grow
     | ExactWidth Size
+
+
+
+--------------------------------------------------------------------------------
+-- INTERNAL HELPERS --
+--------------------------------------------------------------------------------
+
+
+mapModelka : (Modelka a -> Modelka zpr) -> Cell a -> Cell zpr
+mapModelka fn cell =
+    case cell of
+        Visible modelka ->
+            Visible <| fn modelka
+
+        None ->
+            None
 
 
 
@@ -56,53 +75,65 @@ type Width
 --------------------------------------------------------------------------------
 
 
-verticallyCenterContent : Cell msg -> Cell msg
-verticallyCenterContent cell =
-    { cell | verticallyCenterContent = True }
+none : Cell zpr
+none =
+    None
 
 
-fromString : String -> Cell msg
+verticallyCenterContent : Cell zpr -> Cell zpr
+verticallyCenterContent =
+    mapModelka (\cell -> { cell | verticallyCenterContent = True })
+
+
+fromString : String -> Cell zpr
 fromString str =
     fromHtml [ H.text str ]
 
 
-fromHtml : List (Html msg) -> Cell msg
+fromHtml : List (Html zpr) -> Cell zpr
 fromHtml html =
-    { html = html
-    , fontColor = Nothing
-    , padding = Nothing
-    , width = Grow
-    , indent = False
-    , leftMargin = Nothing
-    , backgroundColor = Nothing
-    , verticallyCenterContent = False
-    }
+    Visible
+        { html = html
+        , fontColor = Nothing
+        , padding = Nothing
+        , width = Grow
+        , indent = False
+        , leftMargin = Nothing
+        , backgroundColor = Nothing
+        , verticallyCenterContent = False
+        }
 
 
-map : (a -> msg) -> Cell a -> Cell msg
+map : (a -> zpr) -> Cell a -> Cell zpr
 map toMsg cell =
-    { html = List.map (H.map toMsg) cell.html
-    , fontColor = cell.fontColor
-    , padding = cell.padding
-    , width = cell.width
-    , indent = cell.indent
-    , leftMargin = cell.leftMargin
-    , backgroundColor = cell.backgroundColor
-    , verticallyCenterContent = cell.verticallyCenterContent
-    }
+    case cell of
+        Visible modelka ->
+            Visible
+                { html = List.map (H.map toMsg) modelka.html
+                , fontColor = modelka.fontColor
+                , padding = modelka.padding
+                , width = modelka.width
+                , indent = modelka.indent
+                , leftMargin = modelka.leftMargin
+                , backgroundColor = modelka.backgroundColor
+                , verticallyCenterContent = modelka.verticallyCenterContent
+                }
+
+        None ->
+            None
 
 
-withBackgroundColor : Color -> Cell msg -> Cell msg
-withBackgroundColor color cell =
-    { cell | backgroundColor = Just color }
+withBackgroundColor : Color -> Cell zpr -> Cell zpr
+withBackgroundColor color =
+    mapModelka (\cell -> { cell | backgroundColor = Just color })
 
 
-withSpaceBetween : Size -> List (Cell msg) -> List (Cell msg)
+withSpaceBetween : Size -> List (Cell zpr) -> List (Cell zpr)
 withSpaceBetween size cells =
     let
-        withMargin : Cell msg -> Cell msg
-        withMargin cell =
-            { cell | leftMargin = Just size }
+        withMargin : Cell zpr -> Cell zpr
+        withMargin =
+            mapModelka (\cell -> { cell | leftMargin = Just size })
     in
     case cells of
         first :: rest ->
@@ -112,67 +143,72 @@ withSpaceBetween size cells =
             []
 
 
-withExactWidth : Size -> Cell msg -> Cell msg
-withExactWidth size cell =
-    { cell | width = ExactWidth size }
+withExactWidth : Size -> Cell zpr -> Cell zpr
+withExactWidth size =
+    mapModelka (\cell -> { cell | width = ExactWidth size })
 
 
-pad : Padding -> Cell msg -> Cell msg
-pad padding cell =
-    { cell | padding = Just padding }
+pad : Padding -> Cell zpr -> Cell zpr
+pad padding =
+    mapModelka (\cell -> { cell | padding = Just padding })
 
 
-withFontColor : Color -> Cell msg -> Cell msg
-withFontColor color cell =
-    { cell | fontColor = Just color }
+withFontColor : Color -> Cell zpr -> Cell zpr
+withFontColor color =
+    mapModelka (\cell -> { cell | fontColor = Just color })
 
 
-indent : Cell msg -> Cell msg
-indent cell =
-    { cell | indent = True }
+indent : Cell zpr -> Cell zpr
+indent =
+    mapModelka (\cell -> { cell | indent = True })
 
 
-toHtml : Cell msg -> Html msg
+toHtml : Cell zpr -> Html zpr
 toHtml cell =
-    let
-        conditionalStyling : List Css.Style
-        conditionalStyling =
-            [ Maybe.map
-                (Css.color << Color.toCss)
-                cell.fontColor
-            , Maybe.map Padding.toCss cell.padding
-            ]
-                |> List.filterMap identity
-
-        widthStyle : Css.Style
-        widthStyle =
-            case cell.width of
-                Grow ->
-                    Css.flex (Css.int 1)
-
-                ExactWidth size ->
-                    Css.width <| Size.toPx size
-
-        styles : List Css.Style
-        styles =
-            [ widthStyle
-            , Css.batch conditionalStyling
-            , CssUtil.when cell.indent <|
-                Border.toCss Border.indent
-            , CssUtil.fromMaybe
-                (Margin.left >> Margin.toCss)
-                cell.leftMargin
-            , CssUtil.fromMaybe
-                (Color.toCss >> Css.backgroundColor)
-                cell.backgroundColor
-            , CssUtil.when cell.verticallyCenterContent <|
-                Css.batch
-                    [ Css.justifyContent Css.center
-                    , Css.flexDirection Css.column
-                    , Css.displayFlex
+    case cell of
+        Visible modelka ->
+            let
+                conditionalStyling : List Css.Style
+                conditionalStyling =
+                    [ Maybe.map
+                        (Css.color << Color.toCss)
+                        modelka.fontColor
+                    , Maybe.map Padding.toCss modelka.padding
                     ]
-            ]
-    in
-    H.node "cell"
-        [ A.css styles ]
-        cell.html
+                        |> List.filterMap identity
+
+                widthStyle : Css.Style
+                widthStyle =
+                    case modelka.width of
+                        Grow ->
+                            Css.flex (Css.int 1)
+
+                        ExactWidth size ->
+                            Css.width <| Size.toPx size
+
+                styles : List Css.Style
+                styles =
+                    [ widthStyle
+                    , Css.batch conditionalStyling
+                    , CssUtil.when modelka.indent <|
+                        Border.toCss Border.indent
+                    , CssUtil.fromMaybe
+                        (Margin.left >> Margin.toCss)
+                        modelka.leftMargin
+                    , CssUtil.fromMaybe
+                        (Color.toCss >> Css.backgroundColor)
+                        modelka.backgroundColor
+                    , CssUtil.when modelka.verticallyCenterContent <|
+                        Css.batch
+                            [ Css.justifyContent Css.center
+                            , Css.flexDirection Css.column
+                            , Css.displayFlex
+                            ]
+                    ]
+            in
+            H.node "cell"
+                [ A.css styles ]
+                modelka.html
+
+        None ->
+            H.text ""

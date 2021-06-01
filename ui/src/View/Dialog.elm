@@ -1,9 +1,14 @@
 module View.Dialog exposing
     ( Dialog
+    , first
+    , fromBody
     , map
+    , none
     , toHtml
+    , withHeader
     )
 
+import Css
 import Html.Styled as H exposing (Html)
 import Html.Styled.Attributes as A
 import Style.Border as Border
@@ -18,10 +23,36 @@ import View.Row as Row exposing (Row)
 --------------------------------------------------------------------------------
 
 
-type alias Dialog msg =
-    { header : Maybe (Header msg)
-    , body : List (Row msg)
+type Dialog zpr
+    = Open (Modelka zpr)
+    | None
+
+
+type alias Modelka zpr =
+    { header : Maybe (Header zpr)
+    , body : List (Row zpr)
     }
+
+
+
+--------------------------------------------------------------------------------
+-- INTERNAL HELPERS --
+--------------------------------------------------------------------------------
+
+
+mapModelka : (Modelka zpr -> Modelka zpr) -> Dialog zpr -> Dialog zpr
+mapModelka fn dialog =
+    case dialog of
+        Open modelka ->
+            Open <| fn modelka
+
+        None ->
+            None
+
+
+setHeader : Header zpr -> Modelka zpr -> Modelka zpr
+setHeader header modelka =
+    { modelka | header = Just header }
 
 
 
@@ -30,21 +61,70 @@ type alias Dialog msg =
 --------------------------------------------------------------------------------
 
 
-map : (a -> msg) -> Dialog a -> Dialog msg
-map toMsg dialog =
-    { header = Maybe.map (Header.map toMsg) dialog.header
-    , body = List.map (Row.map toMsg) dialog.body
-    }
+none : Dialog zpr
+none =
+    None
 
 
-toHtml : Dialog msg -> Html msg
+withHeader : Header zpr -> Dialog zpr -> Dialog zpr
+withHeader header =
+    mapModelka (setHeader header)
+
+
+fromBody : List (Row zpr) -> Dialog zpr
+fromBody rows =
+    Open
+        { header = Nothing
+        , body = rows
+        }
+
+
+map : (a -> zpr) -> Dialog a -> Dialog zpr
+map toZpr dialog =
+    case dialog of
+        Open modelka ->
+            Open
+                { header = Maybe.map (Header.map toZpr) modelka.header
+                , body = List.map (Row.map toZpr) modelka.body
+                }
+
+        None ->
+            None
+
+
+first : List (() -> Dialog zpr) -> Dialog zpr
+first dialogFns =
+    case dialogFns of
+        dialogFn :: rest ->
+            case dialogFn () of
+                None ->
+                    first rest
+
+                dialog ->
+                    dialog
+
+        [] ->
+            None
+
+
+toHtml : Dialog zpr -> Html zpr
 toHtml dialog =
-    H.div
-        [ A.css
-            [ Border.toCss Border.outdent ]
-        ]
-        (ListUtil.maybeCons
-            (Maybe.map Header.toRow dialog.header)
-            dialog.body
-            |> List.map Row.toHtml
-        )
+    case dialog of
+        Open modelka ->
+            H.div
+                [ A.css
+                    [ Border.toCss Border.outdent
+                    , Css.position Css.absolute
+                    , Css.left (Css.pct 50)
+                    , Css.top (Css.pct 50)
+                    , Css.transform (Css.translate2 (Css.pct -50) (Css.pct -50))
+                    ]
+                ]
+                (ListUtil.maybeCons
+                    (Maybe.map Header.toRow modelka.header)
+                    modelka.body
+                    |> List.map Row.toHtml
+                )
+
+        None ->
+            H.text ""

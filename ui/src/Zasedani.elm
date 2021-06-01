@@ -2,8 +2,11 @@ module Zasedani exposing
     ( Zasedani
     , Zpr
     , adminMode
+    , devPanel
+    , errorsAsStrs
     , goTo
     , listener
+    , openDevPanel
     , poca
     , recordStorageDecodeError
     , setAdminPassword
@@ -18,11 +21,12 @@ import Ports.FromJs as FromJs
 import Route exposing (Route)
 import Storage exposing (Storage)
 import Util.Maybe as MaybeUtil
+import View.DevPanel as DevPanel
 
 
 
 ---------------------------------------------------------------
--- TYPES --
+-- TYPY --
 ---------------------------------------------------------------
 
 
@@ -30,6 +34,7 @@ type alias Zasedani =
     { navKey : Nav.Key
     , adminMode : Maybe String
     , storage : Storage
+    , devPanel : Maybe DevPanel.Modelka
     , errors : List Error
     }
 
@@ -65,6 +70,7 @@ poca json navKey =
             { navKey = navKey
             , adminMode = adminPassword
             , storage = flags.storage
+            , devPanel = Nothing
             , errors =
                 [ adminError
                     |> Maybe.map InitError
@@ -112,8 +118,29 @@ update msg zasedani =
 
 
 ---------------------------------------------------------------
+-- INTERNAL HELPERS --
+---------------------------------------------------------------
+
+
+errorToString : Error -> String
+errorToString superError =
+    case superError of
+        InitError error ->
+            "Initialization error : " ++ Decode.errorToString error
+
+        StorageDecodeError error ->
+            "Storage Decode Error : " ++ Decode.errorToString error
+
+
+
+---------------------------------------------------------------
 -- API --
 ---------------------------------------------------------------
+
+
+openDevPanel : Zasedani -> Zasedani
+openDevPanel zasedani =
+    { zasedani | devPanel = Just DevPanel.poca }
 
 
 recordStorageDecodeError : Maybe Decode.Error -> Zasedani -> Zasedani
@@ -150,6 +177,16 @@ setAdminPassword str zasedani =
 goTo : Zasedani -> Route -> Cmd msg
 goTo zasedani route =
     Nav.pushUrl zasedani.navKey (Route.toString route)
+
+
+devPanel : Zasedani -> Maybe DevPanel.Modelka
+devPanel =
+    .devPanel
+
+
+errorsAsStrs : Zasedani -> List String
+errorsAsStrs zasedani =
+    List.map errorToString zasedani.errors
 
 
 

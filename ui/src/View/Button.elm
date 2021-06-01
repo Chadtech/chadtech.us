@@ -2,6 +2,7 @@ module View.Button exposing
     ( Button
     , active
     , fromLabel
+    , onClick
     , simple
     , toCell
     , toRow
@@ -163,7 +164,7 @@ fromOnClick label click =
 --------------------------------------------------------------------------------
 
 
-when : Bool -> (Button msg -> Button msg) -> Button msg -> Button msg
+when : Bool -> (Button zpr -> Button zpr) -> Button zpr -> Button zpr
 when cond f button =
     if cond then
         f button
@@ -172,36 +173,41 @@ when cond f button =
         button
 
 
-active : Button msg -> Button msg
+active : Button zpr -> Button zpr
 active button =
     { button | active = True }
 
 
-withLink : Route -> Button msg -> Button msg
+onClick : zpr -> Button zpr -> Button zpr
+onClick zpr button =
+    { button | onClick = Event zpr }
+
+
+withLink : Route -> Button zpr -> Button zpr
 withLink route button =
     { button | onClick = Link route }
 
 
-withLinkToNewWindow : String -> Button msg -> Button msg
+withLinkToNewWindow : String -> Button zpr -> Button zpr
 withLinkToNewWindow url button =
     { button | onClick = NewWindow url }
 
 
-fromLabel : String -> Button msg
+fromLabel : String -> Button zpr
 fromLabel label =
     fromOnClick label NoClick
 
 
-simple : String -> msg -> Button msg
-simple label msg =
-    fromOnClick label (Event msg)
+simple : String -> zpr -> Button zpr
+simple label zpr =
+    fromOnClick label (Event zpr)
 
 
-toCell : Button msg -> Cell msg
+toCell : Button zpr -> Cell zpr
 toCell button =
     Cell.fromHtml [ toHtml button ]
 
 
-toRow : Button msg -> Row msg
+toRow : Button zpr -> Row zpr
 toRow =
     toCell >> Row.fromCell

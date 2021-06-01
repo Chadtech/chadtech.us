@@ -2,7 +2,7 @@ module Layout exposing
     ( Layout
     , handleRouteChange
     , init
-    , view
+    , pohled
     )
 
 import Document exposing (Document)
@@ -50,7 +50,7 @@ allNavItems =
 
 
 navigation : Zasedani -> Maybe NavItem -> Cell msg
-navigation session activeNavItem =
+navigation zasedani activeNavItem =
     let
         toLabel : NavItem -> String
         toLabel navItem =
@@ -106,7 +106,7 @@ navigation session activeNavItem =
                     True
 
                 Admin ->
-                    Zasedani.adminMode session /= Nothing
+                    Zasedani.adminMode zasedani /= Nothing
     in
     allNavItems
         |> List.filter showNavItem
@@ -167,10 +167,16 @@ init route =
     { activeNav = Maybe.map routeToNavItem route }
 
 
-view : Zasedani -> Layout -> List (Cell msg) -> Document msg
-view session layout body =
+
+--------------------------------------------------------------------------------
+-- POHLED --
+--------------------------------------------------------------------------------
+
+
+pohled : Zasedani -> Layout -> List (Cell msg) -> Document msg
+pohled zasedani layout body =
     [ headerRow
-    , (navigation session layout.activeNav :: body)
+    , (navigation zasedani layout.activeNav :: body)
         |> Cell.withSpaceBetween gapSize
         |> Row.fromCells
         |> Row.fillVerticalSpace

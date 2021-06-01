@@ -1,14 +1,14 @@
 module Page.Admin exposing
     ( Modelka
     , Zpr
-    , datSession
+    , datZasedani
     , getLayout
     , handleRouteChange
     , incomingPortsListener
     , poca
+    , pohled
     , setLayout
-    , view
-    , ziskatSession
+    , ziskatZasedani
     , zmodernizovat
     )
 
@@ -85,18 +85,18 @@ handleRouteChange route =
 --------------------------------------------------------------------------------
 
 
-mapSession : (Zasedani -> Zasedani) -> Modelka -> Modelka
-mapSession f model =
-    datSession (f <| ziskatSession model) model
+mapZasedani : (Zasedani -> Zasedani) -> Modelka -> Modelka
+mapZasedani f model =
+    datZasedani (f <| ziskatZasedani model) model
 
 
-datSession : Zasedani -> Modelka -> Modelka
-datSession session model =
-    { model | zasedani = session }
+datZasedani : Zasedani -> Modelka -> Modelka
+datZasedani zasedani model =
+    { model | zasedani = zasedani }
 
 
-ziskatSession : Modelka -> Zasedani
-ziskatSession model =
+ziskatZasedani : Modelka -> Zasedani
+ziskatZasedani model =
     model.zasedani
 
 
@@ -164,7 +164,7 @@ zmodernizovat zpr modelka =
         PasswordFieldUpdated str ->
             ( modelka
                 |> setPasswordField str
-                |> mapSession (Zasedani.setAdminPassword str)
+                |> mapZasedani (Zasedani.setAdminPassword str)
             , Admin.save str
             )
 
@@ -175,8 +175,8 @@ zmodernizovat zpr modelka =
 --------------------------------------------------------------------------------
 
 
-view : Modelka -> List (Cell Zpr)
-view modelka =
+pohled : Modelka -> List (Cell Zpr)
+pohled modelka =
     [ nav modelka.navItem
     , body modelka
     ]

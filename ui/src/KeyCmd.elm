@@ -5,6 +5,7 @@ module KeyCmd exposing
     , cmd
     , map
     , none
+    , period
     , shift
     , subscriptions
     )
@@ -107,6 +108,11 @@ cmd =
 shift : KeyCmd msg -> KeyCmd msg
 shift =
     mapModels (\model -> { model | shift = Shift True })
+
+
+period : msg -> KeyCmd msg
+period =
+    fromKeys [ "period", "." ]
 
 
 a : msg -> KeyCmd msg

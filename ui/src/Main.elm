@@ -13,6 +13,9 @@ import Route exposing (Route)
 import Url exposing (Url)
 import Util.Cmd as CmdUtil
 import View.Cell as Cell exposing (Cell)
+import View.DevPanel as DevPanel
+import View.Dialog as Dialog exposing (Dialog)
+import View.Row as Row
 import Zasedani exposing (Zasedani)
 
 
@@ -25,7 +28,7 @@ import Zasedani exposing (Zasedani)
 main : Program Decode.Value (Result Error Modelka) Zpr
 main =
     { init = poca
-    , view = Document.toBrowserDocument << superView
+    , view = Document.toBrowserDocument << superPohled
     , update = superZmodernizovat
     , subscriptions = superSubscriptions
     , onUrlRequest = UrlRequested
@@ -44,15 +47,18 @@ superSubscriptions result =
             Sub.none
 
 
-superView : Result Error Modelka -> Document Zpr
-superView result =
+superPohled : Result Error Modelka -> Document Zpr
+superPohled result =
     case result of
         Ok modelka ->
-            view modelka
+            pohled modelka
 
         Err error ->
-            Document.fromBody
-                []
+            [ "Error"
+            , "Chadtech.us failed to start, sorry about that"
+            ]
+                |> List.map Row.fromString
+                |> Document.fromBody
 
 
 superZmodernizovat : Zpr -> Result Error Modelka -> ( Result Error Modelka, Cmd Zpr )
@@ -87,6 +93,7 @@ type Zpr
     | BlogZpr Blog.Zpr
     | AdminZpr Admin.Zpr
     | OpenAdminPanelPressed
+    | OpenDevPanelPressed
     | ZasedaniZpr Zasedani.Zpr
 
 
@@ -133,7 +140,7 @@ ziskatZasedani model =
             Blog.ziskatZasedani subModelka
 
         Admin subModelka ->
-            Admin.ziskatSession subModelka
+            Admin.ziskatZasedani subModelka
 
 
 datZasedani : Zasedani -> Modelka -> Modelka
@@ -146,7 +153,7 @@ datZasedani zasedani model =
             Blog <| Blog.datZasedani zasedani subModel
 
         Admin subModel ->
-            Admin <| Admin.datSession zasedani subModel
+            Admin <| Admin.datZasedani zasedani subModel
 
 
 mapZasedani : (Zasedani -> Zasedani) -> Modelka -> Modelka
@@ -240,10 +247,10 @@ zmodernizovat zpr modelka =
 
         OpenAdminPanelPressed ->
             let
-                ( newSession, cmd ) =
+                ( newZasedani, cmd ) =
                     Zasedani.turnOnAdminMode zasedani
             in
-            ( datZasedani newSession modelka
+            ( datZasedani newZasedani modelka
             , Cmd.batch
                 [ cmd
                 , Zasedani.goTo zasedani Route.admin
@@ -261,6 +268,13 @@ zmodernizovat zpr modelka =
 
         ZasedaniZpr subZpr ->
             ( mapZasedani (Zasedani.update subZpr) modelka
+            , Cmd.none
+            )
+
+        OpenDevPanelPressed ->
+            ( mapZasedani
+                Zasedani.openDevPanel
+                modelka
             , Cmd.none
             )
 
@@ -329,37 +343,53 @@ handleRouteChange maybeRoute modelka =
 
 
 --------------------------------------------------------------------------------
--- VIEW --
+-- POHLED --
 --------------------------------------------------------------------------------
 
 
-view : Modelka -> Document Zpr
-view model =
+pohled : Modelka -> Document Zpr
+pohled modelka =
     let
         body : List (Cell Zpr)
         body =
-            case model of
+            case modelka of
                 PageNotFound _ _ ->
                     [ Cell.fromString "Page not found!" ]
 
-                Blog subModel ->
-                    Blog.view subModel
+                Blog subModelka ->
+                    Blog.pohled subModelka
                         |> List.map (Cell.map BlogZpr)
 
-                Admin subModel ->
-                    Admin.view subModel
+                Admin subModelka ->
+                    Admin.pohled subModelka
                         |> List.map (Cell.map AdminZpr)
 
         layout : Layout
         layout =
-            getLayout model
+            getLayout modelka
 
-        session : Zasedani
-        session =
-            ziskatZasedani model
+        zasedani : Zasedani
+        zasedani =
+            ziskatZasedani modelka
+
+        dialogs : List (() -> Dialog zpr)
+        dialogs =
+            [ \() ->
+                case Zasedani.devPanel zasedani of
+                    Just devPanel ->
+                        DevPanel.pohled
+                            { errors =
+                                Zasedani.errorsAsStrs zasedani
+                            }
+                            devPanel
+
+                    Nothing ->
+                        Dialog.none
+            ]
     in
     body
-        |> Layout.view session layout
+        |> Layout.pohled zasedani layout
+        |> Document.withDialog (Dialog.first dialogs)
 
 
 
@@ -373,8 +403,7 @@ subscriptions model =
     [ FromJs.subscription
         MsgDecodeFailed
         (incomingPortsListeners model)
-    , KeyCmd.subscriptions
-        keyCmds
+    , KeyCmd.subscriptions keyCmds
     ]
         |> Sub.batch
 
@@ -382,6 +411,9 @@ subscriptions model =
 keyCmds : List (KeyCmd Zpr)
 keyCmds =
     [ KeyCmd.a OpenAdminPanelPressed
+        |> KeyCmd.shift
+        |> KeyCmd.cmd
+    , KeyCmd.period OpenDevPanelPressed
         |> KeyCmd.shift
         |> KeyCmd.cmd
     ]
