@@ -46,6 +46,7 @@ toHtml textField =
     in
     H.input
         [ Ev.onInput textField.onInput
+        , A.value textField.value
         , A.css styles
         ]
         []

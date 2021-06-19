@@ -12,6 +12,8 @@ import Css
 import Html.Styled as H exposing (Html)
 import Html.Styled.Attributes as A
 import Style.Border as Border
+import Style.Padding as Padding
+import Style.Size as Size
 import Util.List as ListUtil
 import View.Dialog.Header as Header exposing (Header)
 import View.Row as Row exposing (Row)
@@ -118,6 +120,7 @@ toHtml dialog =
                     , Css.left (Css.pct 50)
                     , Css.top (Css.pct 50)
                     , Css.transform (Css.translate2 (Css.pct -50) (Css.pct -50))
+                    , Padding.toCss <| Padding.all Size.small
                     ]
                 ]
                 (ListUtil.maybeCons

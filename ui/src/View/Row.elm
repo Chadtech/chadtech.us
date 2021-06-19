@@ -5,6 +5,7 @@ module View.Row exposing
     , fromCells
     , fromString
     , map
+    , pad
     , toCell
     , toHtml
     , withBackgroundColor
@@ -17,6 +18,7 @@ import Html.Styled as H exposing (Attribute, Html)
 import Html.Styled.Attributes as A
 import Style.Color as Color exposing (Color)
 import Style.Margin as Margin
+import Style.Padding as Padding exposing (Padding)
 import Style.Size exposing (Size)
 import Util.Css as CssUtil
 import View.Cell as Cell exposing (Cell)
@@ -28,13 +30,35 @@ import View.Cell as Cell exposing (Cell)
 --------------------------------------------------------------------------------
 
 
-type alias Row msg =
-    { cells : List (Cell msg)
+type Row zpr
+    = Visible (Modelka zpr)
+    | None
+
+
+type alias Modelka zpr =
+    { cells : List (Cell zpr)
     , backgroundColor : Maybe Color
     , semantics : Maybe String
     , topMargin : Maybe Size
     , fillVerticalSpace : Bool
+    , padding : Maybe Padding
     }
+
+
+
+--------------------------------------------------------------------------------
+-- INTERNAL HELPERS --
+--------------------------------------------------------------------------------
+
+
+mapModelka : (Modelka a -> Modelka zpr) -> Row a -> Row zpr
+mapModelka fn cell =
+    case cell of
+        Visible modelka ->
+            Visible <| fn modelka
+
+        None ->
+            None
 
 
 
@@ -43,54 +67,65 @@ type alias Row msg =
 --------------------------------------------------------------------------------
 
 
-fromCells : List (Cell msg) -> Row msg
+pad : Padding -> Row zpr -> Row zpr
+pad padding =
+    mapModelka (\row -> { row | padding = Just padding })
+
+
+fromCells : List (Cell zpr) -> Row zpr
 fromCells cells =
-    { cells = cells
-    , backgroundColor = Nothing
-    , semantics = Nothing
-    , topMargin = Nothing
-    , fillVerticalSpace = False
-    }
+    Visible
+        { cells = cells
+        , backgroundColor = Nothing
+        , semantics = Nothing
+        , topMargin = Nothing
+        , fillVerticalSpace = False
+        , padding = Nothing
+        }
 
 
-fromCell : Cell msg -> Row msg
+fromCell : Cell zpr -> Row zpr
 fromCell cell =
     fromCells [ cell ]
 
 
-toCell : List (Row msg) -> Cell msg
+toCell : List (Row zpr) -> Cell zpr
 toCell rows =
     rows
         |> List.map toHtml
         |> Cell.fromHtml
 
 
-fromString : String -> Row msg
+fromString : String -> Row zpr
 fromString str =
     fromCell <| Cell.fromString str
 
 
-map : (a -> msg) -> Row a -> Row msg
-map toMsg row =
-    { cells = List.map (Cell.map toMsg) row.cells
-    , backgroundColor = row.backgroundColor
-    , semantics = row.semantics
-    , topMargin = row.topMargin
-    , fillVerticalSpace = row.fillVerticalSpace
-    }
+map : (a -> zpr) -> Row a -> Row zpr
+map toMsg =
+    mapModelka
+        (\row ->
+            { cells = List.map (Cell.map toMsg) row.cells
+            , backgroundColor = row.backgroundColor
+            , semantics = row.semantics
+            , topMargin = row.topMargin
+            , fillVerticalSpace = row.fillVerticalSpace
+            , padding = row.padding
+            }
+        )
 
 
-fillVerticalSpace : Row msg -> Row msg
-fillVerticalSpace row =
-    { row | fillVerticalSpace = True }
+fillVerticalSpace : Row zpr -> Row zpr
+fillVerticalSpace =
+    mapModelka (\row -> { row | fillVerticalSpace = True })
 
 
-withSpaceBetween : Size -> List (Row msg) -> List (Row msg)
+withSpaceBetween : Size -> List (Row zpr) -> List (Row zpr)
 withSpaceBetween size rows =
     let
-        withMargin : Row msg -> Row msg
-        withMargin row =
-            { row | topMargin = Just size }
+        withMargin : Row zpr -> Row zpr
+        withMargin =
+            mapModelka (\row -> { row | topMargin = Just size })
     in
     case rows of
         first :: rest ->
@@ -100,36 +135,42 @@ withSpaceBetween size rows =
             []
 
 
-withBackgroundColor : Color -> Row msg -> Row msg
-withBackgroundColor color row =
-    { row | backgroundColor = Just color }
+withBackgroundColor : Color -> Row zpr -> Row zpr
+withBackgroundColor color =
+    mapModelka (\row -> { row | backgroundColor = Just color })
 
 
-withTagName : String -> Row msg -> Row msg
-withTagName name row =
-    { row | semantics = Just name }
+withTagName : String -> Row zpr -> Row zpr
+withTagName name =
+    mapModelka (\row -> { row | semantics = Just name })
 
 
-toHtml : Row msg -> Html msg
+toHtml : Row zpr -> Html zpr
 toHtml row =
-    let
-        conditionalStyling : List Css.Style
-        conditionalStyling =
-            [ Maybe.map
-                (Css.backgroundColor << Color.toCss)
-                row.backgroundColor
-            , Maybe.map (Margin.toCss << Margin.top) row.topMargin
-            ]
-                |> List.filterMap identity
+    case row of
+        None ->
+            H.text ""
 
-        styles : List Css.Style
-        styles =
-            [ Css.displayFlex
-            , Css.batch conditionalStyling
-            , CssUtil.when row.fillVerticalSpace (Css.flex <| Css.int 1)
-            ]
-    in
-    H.node (Maybe.withDefault "row" row.semantics)
-        [ A.css styles
-        ]
-        (List.map Cell.toHtml row.cells)
+        Visible modelka ->
+            let
+                conditionalStyling : List Css.Style
+                conditionalStyling =
+                    [ Maybe.map
+                        (Css.backgroundColor << Color.toCss)
+                        modelka.backgroundColor
+                    , Maybe.map (Margin.toCss << Margin.top) modelka.topMargin
+                    , Maybe.map Padding.toCss modelka.padding
+                    ]
+                        |> List.filterMap identity
+
+                styles : List Css.Style
+                styles =
+                    [ Css.displayFlex
+                    , Css.batch conditionalStyling
+                    , CssUtil.when modelka.fillVerticalSpace (Css.flex <| Css.int 1)
+                    ]
+            in
+            H.node (Maybe.withDefault "row" modelka.semantics)
+                [ A.css styles
+                ]
+                (List.map Cell.toHtml modelka.cells)

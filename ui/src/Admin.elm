@@ -36,7 +36,7 @@ fromStorage storage =
             ( Nothing, Just error )
 
 
-poca : ( String, Cmd msg )
+poca : ( String, Cmd zpr )
 poca =
     let
         initValue : String
@@ -46,6 +46,6 @@ poca =
     ( initValue, save initValue )
 
 
-save : String -> Cmd msg
+save : String -> Cmd zpr
 save value =
     Storage.dat key <| Encode.string value
