@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Api
 import Browser exposing (UrlRequest)
 import Browser.Navigation as Nav
 import Document exposing (Document)
@@ -128,6 +129,19 @@ poca json url navKey =
 --------------------------------------------------------------------------------
 -- INTERNAL HELPERS --
 --------------------------------------------------------------------------------
+
+
+pendingApiRequests : Modelka -> Api.PendingRequestCount
+pendingApiRequests modelka =
+    case modelka of
+        PageNotFound _ _ ->
+            Api.zero
+
+        Blog _ ->
+            Api.zero
+
+        Admin subModelka ->
+            Admin.pendingRequests subModelka
 
 
 ziskatZasedani : Modelka -> Zasedani
@@ -324,18 +338,17 @@ handleRouteChange maybeRoute modelka =
                 Route.Admin subRoute ->
                     case modelka of
                         Admin subModelka ->
-                            ( Admin.handleRouteChange
+                            Admin.handleRouteChange
                                 subRoute
                                 subModelka
-                                |> Admin
-                            , Cmd.none
-                            )
+                                |> Tuple.mapFirst Admin
+                                |> Tuple.mapSecond (Cmd.map AdminZpr)
 
                         _ ->
                             if Zasedani.adminMode session /= Nothing then
                                 Admin.poca session layout subRoute
-                                    |> Admin
-                                    |> CmdUtil.withNoCmd
+                                    |> Tuple.mapFirst Admin
+                                    |> Tuple.mapSecond (Cmd.map AdminZpr)
 
                             else
                                 pageNotFound ()
@@ -387,8 +400,11 @@ pohled modelka =
                         Dialog.none
             ]
     in
-    body
-        |> Layout.pohled zasedani layout
+    Layout.pohled
+        { pendingApiRequests = pendingApiRequests modelka }
+        zasedani
+        layout
+        body
         |> Document.withDialog (Dialog.first dialogs)
 
 

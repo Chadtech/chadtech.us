@@ -48,6 +48,7 @@ toHtml textField =
         [ Ev.onInput textField.onInput
         , A.value textField.value
         , A.css styles
+        , A.spellcheck False
         ]
         []
 

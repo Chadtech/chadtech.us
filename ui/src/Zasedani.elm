@@ -8,6 +8,7 @@ module Zasedani exposing
     , listener
     , openDevPanel
     , poca
+    , recordApiError
     , recordStorageDecodeError
     , setAdminPassword
     , turnOnAdminMode
@@ -15,6 +16,7 @@ module Zasedani exposing
     )
 
 import Admin
+import Api
 import Browser.Navigation as Nav
 import Json.Decode as Decode
 import Ports.FromJs as FromJs
@@ -42,6 +44,7 @@ type alias Zasedani =
 type Error
     = InitError Decode.Error
     | StorageDecodeError Decode.Error
+    | ApiError Api.Error
 
 
 type Zpr
@@ -131,11 +134,19 @@ errorToString superError =
         StorageDecodeError error ->
             "Storage Decode Error : " ++ Decode.errorToString error
 
+        ApiError error ->
+            "Api Error : " ++ Api.errorToString error
+
 
 
 ---------------------------------------------------------------
 -- API --
 ---------------------------------------------------------------
+
+
+recordApiError : Api.Error -> Zasedani -> Zasedani
+recordApiError error =
+    recordError (ApiError error)
 
 
 openDevPanel : Zasedani -> Zasedani

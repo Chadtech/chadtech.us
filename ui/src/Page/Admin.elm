@@ -5,6 +5,7 @@ module Page.Admin exposing
     , getLayout
     , handleRouteChange
     , incomingPortsListener
+    , pendingRequests
     , poca
     , pohled
     , setLayout
@@ -13,7 +14,9 @@ module Page.Admin exposing
     )
 
 import Admin
+import Api
 import Layout exposing (Layout)
+import Page.Admin.Blog as Blog
 import Ports.FromJs as FromJs
 import Route
 import Route.Admin as AdminRoute exposing (Route)
@@ -32,15 +35,23 @@ import Zasedani exposing (Zasedani)
 
 
 type alias Modelka =
-    { zasedani : Zasedani
-    , layout : Layout
+    { layout : Layout
+    , zasedani : Zasedani
     , adminPassword : String
-    , navItem : NavItem
+    , page : Page
+    , api : Api.Modelka
     }
+
+
+type Page
+    = Page__Blog Blog.Modelka
+    | Page__Loading NavItem
 
 
 type Zpr
     = PasswordFieldUpdated String
+    | BlogZpr Blog.Zpr
+    | BlogLoaded (Api.Response Blog.Flags)
 
 
 type NavItem
@@ -53,19 +64,22 @@ type NavItem
 --------------------------------------------------------------------------------
 
 
-poca : Zasedani -> Layout -> Route -> Modelka
+poca : Zasedani -> Layout -> Route -> ( Modelka, Cmd Zpr )
 poca zasedani layout route =
     let
         ( adminPassword, maybeError ) =
             Admin.fromStorage zasedani.storage
+
+        modelka : Modelka
+        modelka =
+            { layout = layout
+            , adminPassword = Maybe.withDefault "" adminPassword
+            , page = Page__Loading (routeToNavItem route)
+            , zasedani = Zasedani.recordStorageDecodeError maybeError zasedani
+            , api = Api.init
+            }
     in
-    { zasedani =
-        zasedani
-            |> Zasedani.recordStorageDecodeError maybeError
-    , layout = layout
-    , adminPassword = Maybe.withDefault "" adminPassword
-    , navItem = routeToNavItem route
-    }
+    Tuple.pair modelka (loadPage route)
 
 
 
@@ -74,9 +88,11 @@ poca zasedani layout route =
 --------------------------------------------------------------------------------
 
 
-handleRouteChange : Route -> Modelka -> Modelka
-handleRouteChange route =
-    datNavItem (routeToNavItem route)
+handleRouteChange : Route -> Modelka -> ( Modelka, Cmd Zpr )
+handleRouteChange route modelka =
+    ( datPage (Page__Loading (routeToNavItem route)) modelka
+    , loadPage route
+    )
 
 
 
@@ -85,19 +101,24 @@ handleRouteChange route =
 --------------------------------------------------------------------------------
 
 
+pendingRequests : Modelka -> Api.PendingRequestCount
+pendingRequests modelka =
+    Api.pendingRequests modelka.api
+
+
 mapZasedani : (Zasedani -> Zasedani) -> Modelka -> Modelka
 mapZasedani f model =
     datZasedani (f <| ziskatZasedani model) model
 
 
 datZasedani : Zasedani -> Modelka -> Modelka
-datZasedani zasedani model =
-    { model | zasedani = zasedani }
+datZasedani zasedani modelka =
+    { modelka | zasedani = zasedani }
 
 
 ziskatZasedani : Modelka -> Zasedani
-ziskatZasedani model =
-    model.zasedani
+ziskatZasedani modelka =
+    modelka.zasedani
 
 
 getLayout : Modelka -> Layout
@@ -116,6 +137,23 @@ setLayout layout model =
 --------------------------------------------------------------------------------
 
 
+pageToNavItem : Page -> NavItem
+pageToNavItem page =
+    case page of
+        Page__Blog _ ->
+            NavItem__Blog
+
+        Page__Loading navItem ->
+            navItem
+
+
+loadPage : Route -> Cmd Zpr
+loadPage route =
+    case route of
+        AdminRoute.Blog ->
+            Blog.load BlogLoaded
+
+
 navItemToRoute : NavItem -> Route
 navItemToRoute navItem =
     case navItem of
@@ -131,13 +169,13 @@ navItemToLabel navItem =
 
 
 setPasswordField : String -> Modelka -> Modelka
-setPasswordField newField model =
-    { model | adminPassword = newField }
+setPasswordField newField modelka =
+    { modelka | adminPassword = newField }
 
 
-datNavItem : NavItem -> Modelka -> Modelka
-datNavItem navItem model =
-    { model | navItem = navItem }
+datPage : Page -> Modelka -> Modelka
+datPage page modelka =
+    { modelka | page = page }
 
 
 routeToNavItem : Route -> NavItem
@@ -168,6 +206,41 @@ zmodernizovat zpr modelka =
             , Admin.save str
             )
 
+        BlogZpr subZpr ->
+            case modelka.page of
+                Page__Blog subModelka ->
+                    let
+                        ( novaSubModelka, cmd ) =
+                            Blog.zmodernizovat subZpr subModelka
+                    in
+                    ( datPage
+                        (Page__Blog novaSubModelka)
+                        modelka
+                    , Cmd.map BlogZpr cmd
+                    )
+
+                _ ->
+                    ( modelka, Cmd.none )
+
+        BlogLoaded response ->
+            ( Api.handle response handleBlogLoaded modelka
+            , Cmd.none
+            )
+
+
+handleBlogLoaded : Result Api.Error Blog.Flags -> Modelka -> Modelka
+handleBlogLoaded result modelka =
+    case result of
+        Ok flags ->
+            datPage
+                (Page__Blog <| Blog.poca flags)
+                modelka
+
+        Err error ->
+            mapZasedani
+                (Zasedani.recordApiError error)
+                modelka
+
 
 
 --------------------------------------------------------------------------------
@@ -177,13 +250,13 @@ zmodernizovat zpr modelka =
 
 pohled : Modelka -> List (Cell Zpr)
 pohled modelka =
-    [ nav modelka.navItem
+    [ nav modelka.page
     , body modelka
     ]
 
 
-nav : NavItem -> Cell Zpr
-nav activeNavItem =
+nav : Page -> Cell Zpr
+nav page =
     let
         navItemView : NavItem -> Row Zpr
         navItemView navItem =
@@ -191,7 +264,7 @@ nav activeNavItem =
                 (navItemToLabel navItem)
                 |> Button.withLink
                     (Route.fromAdminRoute <| navItemToRoute navItem)
-                |> Button.when (navItem == activeNavItem) Button.active
+                |> Button.when (navItem == pageToNavItem page) Button.active
                 |> Button.toRow
     in
     navItems
@@ -202,18 +275,36 @@ nav activeNavItem =
 
 body : Modelka -> Cell Zpr
 body modelka =
-    [ Row.fromString "Admin Panel"
-    , Row.fromCells
-        [ Cell.fromString "Admin Password"
-            |> Cell.withExactWidth (Size.extraLarge 4)
-            |> Cell.verticallyCenterContent
-        , TextField.simple
-            modelka.adminPassword
-            PasswordFieldUpdated
-            |> TextField.toCell
-            |> Cell.withExactWidth (Size.extraLarge 5)
-        ]
+    let
+        titleRows : List (Row Zpr)
+        titleRows =
+            [ Row.fromString "Admin Panel"
+            , Row.fromCells
+                [ Cell.fromString "Admin Password"
+                    |> Cell.withExactWidth (Size.extraLarge 4)
+                    |> Cell.verticallyCenterContent
+                , TextField.simple
+                    modelka.adminPassword
+                    PasswordFieldUpdated
+                    |> TextField.toCell
+                    |> Cell.withExactWidth (Size.extraLarge 5)
+                ]
+            ]
+
+        navItemRows : List (Row Zpr)
+        navItemRows =
+            case modelka.page of
+                Page__Blog subModelka ->
+                    Blog.pohled subModelka
+                        |> List.map (Row.map BlogZpr)
+
+                Page__Loading _ ->
+                    [ Row.fromString "Loading.." ]
+    in
+    [ titleRows
+    , navItemRows
     ]
+        |> List.concat
         |> Row.withSpaceBetween Size.medium
         |> Row.toCell
 

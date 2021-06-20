@@ -5,6 +5,7 @@ module Layout exposing
     , pohled
     )
 
+import Api
 import Document exposing (Document)
 import Route exposing (Route)
 import Style.Color as Color
@@ -173,8 +174,13 @@ init route =
 --------------------------------------------------------------------------------
 
 
-pohled : Zasedani -> Layout -> List (Cell msg) -> Document msg
-pohled zasedani layout body =
+pohled :
+    { pendingApiRequests : Api.PendingRequestCount }
+    -> Zasedani
+    -> Layout
+    -> List (Cell msg)
+    -> Document msg
+pohled args zasedani layout body =
     [ headerRow
     , (navigation zasedani layout.activeNav :: body)
         |> Cell.withSpaceBetween gapSize
