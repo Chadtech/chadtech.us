@@ -9,6 +9,7 @@ extern crate serde_json;
 use crate::db::Pool;
 use crate::flags::Flags;
 use crate::graphql_schema::{create_schema, Schema};
+use actix_web::middleware::Logger;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
@@ -128,10 +129,18 @@ async fn main() -> Result<(), String> {
 
     let web_modelka = actix_web::web::Data::new(modelka.clone());
 
-    let web_schema = actix_web::web::Data::new(create_schema());
+    let schema = create_schema();
+    let web_schema = actix_web::web::Data::new(schema);
+
+    // env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+
+    std::env::set_var("RUST_LOG", "actix_web=info");
+    env_logger::init();
+    println!("8");
     HttpServer::new(move || {
         App::new()
-            .wrap(middleware::Logger::default())
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %{User-Agent}i"))
             .data(pool.clone())
             .app_data(web_schema.clone())
             .app_data(web_modelka.clone())
@@ -199,16 +208,21 @@ async fn graphiql() -> HttpResponse {
 async fn graphql(
     pool: web::Data<Pool>,
     schema: web::Data<Schema>,
-    // model: web::Data<Arc<Model>>,
     req: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let ktx = graphql_schema::Kontext {
         db_pool: pool.get_ref().to_owned(),
     };
 
+    println!("9");
     let user = web::block(move || {
+        println!("A");
         let res = req.execute(&schema, &ktx);
-        Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
+
+        let graphql_res_str = serde_json::to_string(&res)?;
+
+        println!("{}", &graphql_res_str);
+        Ok::<_, serde_json::error::Error>(graphql_res_str)
     })
     .await
     .map_err(actix_web::Error::from)?;
