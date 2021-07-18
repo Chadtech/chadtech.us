@@ -9,7 +9,11 @@ module Page.Admin.Blog exposing
     , zmodernizovat
     )
 
-import Api
+import Api exposing (HasApi)
+import Api.Object.Post as PostSS
+import Api.Query as Query
+import Graphql.Http
+import Graphql.SelectionSet as SS
 import View.Row exposing (Row)
 
 
@@ -20,7 +24,23 @@ import View.Row exposing (Row)
 
 
 type alias Modelka =
-    { api : Api.Modelka }
+    { api : Api.Modelka AdminBlogApiKey
+    , posts : List Post
+    }
+
+
+type AdminBlogApiKey
+    = AdminBlogApiKey
+
+
+type Post
+    = Post__V2 PostV2
+
+
+type alias PostV2 =
+    { id : Int
+    , title : String
+    }
 
 
 type Zpr
@@ -34,17 +54,38 @@ type Zpr
 
 
 type alias Flags =
-    {}
+    { posts : List Post }
 
 
 poca : Flags -> Modelka
 poca flags =
-    { api = Api.init }
+    { api = Api.init
+    , posts = flags.posts
+    }
 
 
-load : (Api.Response Flags -> msg) -> Cmd msg
-load toMsg =
-    Cmd.none
+load :
+    (Api.Response Flags key -> zpr)
+    -> HasApi modelka key
+    -> ( HasApi modelka key, Cmd zpr )
+load toZpr modelka =
+    let
+        flagsRequest : Api.Request Flags
+        flagsRequest =
+            Query.blogpostsV2
+                (SS.map2 PostV2
+                    PostSS.id
+                    PostSS.title
+                    |> SS.map Post__V2
+                )
+                |> SS.map Flags
+                |> Api.query
+    in
+    Api.send
+        { toZpr = toZpr
+        , modelka = modelka
+        , req = flagsRequest
+        }
 
 
 

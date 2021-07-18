@@ -39,8 +39,16 @@ type alias Modelka =
     , zasedani : Zasedani
     , adminPassword : String
     , page : Page
-    , api : Api.Modelka
+    , api : Api.Modelka AdminApiKey
     }
+
+
+type AdminApiKey
+    = AdminApiKey
+
+
+type alias Response value =
+    Api.Response value AdminApiKey
 
 
 type Page
@@ -51,7 +59,7 @@ type Page
 type Zpr
     = PasswordFieldUpdated String
     | BlogZpr Blog.Zpr
-    | BlogLoaded (Api.Response Blog.Flags)
+    | BlogLoaded (Response Blog.Flags)
 
 
 type NavItem
@@ -79,7 +87,7 @@ poca zasedani layout route =
             , api = Api.init
             }
     in
-    Tuple.pair modelka (loadPage route)
+    loadPage route modelka
 
 
 
@@ -90,9 +98,9 @@ poca zasedani layout route =
 
 handleRouteChange : Route -> Modelka -> ( Modelka, Cmd Zpr )
 handleRouteChange route modelka =
-    ( datPage (Page__Loading (routeToNavItem route)) modelka
-    , loadPage route
-    )
+    modelka
+        |> datPage (Page__Loading (routeToNavItem route))
+        |> loadPage route
 
 
 
@@ -147,11 +155,11 @@ pageToNavItem page =
             navItem
 
 
-loadPage : Route -> Cmd Zpr
-loadPage route =
+loadPage : Route -> Modelka -> ( Modelka, Cmd Zpr )
+loadPage route modelka =
     case route of
         AdminRoute.Blog ->
-            Blog.load BlogLoaded
+            Blog.load BlogLoaded modelka
 
 
 navItemToRoute : NavItem -> Route

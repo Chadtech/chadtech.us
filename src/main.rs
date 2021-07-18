@@ -9,8 +9,9 @@ extern crate serde_json;
 use crate::db::Pool;
 use crate::flags::Flags;
 use crate::graphql_schema::{create_schema, Schema};
+use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{http, web, App, HttpResponse, HttpServer};
 use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
 use notify::{raw_watcher, RecursiveMode, Watcher};
@@ -136,9 +137,11 @@ async fn main() -> Result<(), String> {
     env_logger::init();
 
     HttpServer::new(move || {
+        let cors = Cors::permissive();
+
         App::new()
+            .wrap(cors)
             .wrap(Logger::default())
-            .wrap(Logger::new("%a %{User-Agent}i"))
             .data(pool.clone())
             .app_data(web_schema.clone())
             .app_data(web_modelka.clone())
@@ -212,14 +215,11 @@ async fn graphql(
         db_pool: pool.get_ref().to_owned(),
     };
 
-    println!("9");
     let user = web::block(move || {
-        println!("A");
         let res = req.execute(&schema, &ktx);
 
         let graphql_res_str = serde_json::to_string(&res)?;
 
-        println!("{}", &graphql_res_str);
         Ok::<_, serde_json::error::Error>(graphql_res_str)
     })
     .await
@@ -269,7 +269,7 @@ fn write_frontend_api_code(model: &Modelka) -> std::io::Result<()> {
         Okoli::Dev(_) => {
             let mut buf = String::new();
 
-            buf.push_str("localhost:");
+            buf.push_str("http://127.0.0.1:");
             buf.push_str(model.port_number.to_string().as_str());
 
             buf

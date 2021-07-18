@@ -125,8 +125,8 @@ update msg zasedani =
 ---------------------------------------------------------------
 
 
-errorToString : Error -> String
-errorToString superError =
+errorToString : { sensitive : Bool } -> Error -> String
+errorToString args superError =
     case superError of
         InitError error ->
             "Initialization error : " ++ Decode.errorToString error
@@ -135,7 +135,7 @@ errorToString superError =
             "Storage Decode Error : " ++ Decode.errorToString error
 
         ApiError error ->
-            "Api Error : " ++ Api.errorToString error
+            "Api Error : " ++ Api.errorToString { sensitive = args.sensitive } error
 
 
 
@@ -195,9 +195,9 @@ devPanel =
     .devPanel
 
 
-errorsAsStrs : Zasedani -> List String
-errorsAsStrs zasedani =
-    List.map errorToString zasedani.errors
+errorsAsStrs : { sensitive : Bool } -> Zasedani -> List String
+errorsAsStrs args zasedani =
+    List.map (errorToString { sensitive = args.sensitive }) zasedani.errors
 
 
 

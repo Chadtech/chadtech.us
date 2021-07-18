@@ -392,7 +392,9 @@ pohled modelka =
                     Just devPanel ->
                         DevPanel.pohled
                             { errors =
-                                Zasedani.errorsAsStrs zasedani
+                                Zasedani.errorsAsStrs
+                                    { sensitive = False }
+                                    zasedani
                             }
                             devPanel
 
