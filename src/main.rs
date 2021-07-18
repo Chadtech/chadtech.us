@@ -10,7 +10,7 @@ use crate::db::Pool;
 use crate::flags::Flags;
 use crate::graphql_schema::{create_schema, Schema};
 use actix_web::middleware::Logger;
-use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
 use notify::{raw_watcher, RecursiveMode, Watcher};
@@ -125,18 +125,16 @@ async fn main() -> Result<(), String> {
         buf
     };
 
-    // Create Juniper schema
-
     let web_modelka = actix_web::web::Data::new(modelka.clone());
 
+    // Graphql Schema
     let schema = create_schema();
     let web_schema = actix_web::web::Data::new(schema);
 
-    // env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
-
+    // Logging
     std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
-    println!("8");
+
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -296,22 +294,19 @@ fn write_frontend_api_code(model: &Modelka) -> std::io::Result<()> {
 fn compile_elm(okoli: &Okoli) -> Result<(), String> {
     match okoli {
         Okoli::Dev(dev_modelka) => {
+            let run_cmd = |from_cmd: fn(&mut Command) -> Result<(), String>| {
+                from_cmd(Command::new("elm").current_dir("./ui").args(&[
+                    "make",
+                    "./src/Main.elm",
+                    "--output=./public/elm.js",
+                ]))
+            };
             if dev_modelka.show_elm_output {
                 clear_terminal();
 
-                Command::new("elm")
-                    .current_dir("./ui")
-                    .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
-                    .spawn()
-                    .map(|_| ())
-                    .map_err(|err| err.to_string())
+                run_cmd(|cmd| cmd.spawn().map(|_| ()).map_err(|err| err.to_string()))
             } else {
-                Command::new("elm")
-                    .current_dir("./ui")
-                    .args(&["make", "./src/Main.elm", "--output=./public/elm.js"])
-                    .output()
-                    .map(|_| ())
-                    .map_err(|err| err.to_string())
+                run_cmd(|cmd| cmd.output().map(|_| ()).map_err(|err| err.to_string()))
             }
         }
         Okoli::Prod(_) => {
