@@ -2,9 +2,49 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.InputObject exposing (placeholder)
+module Api.InputObject exposing (NovaEvent, NovaEventRequiredFields, buildNovaEvent, encodeNovaEvent)
+
+import Api.Interface
+import Api.Object
+import Api.Scalar
+import Api.ScalarCodecs
+import Api.Union
+import Graphql.Internal.Builder.Argument as Argument exposing (Argument)
+import Graphql.Internal.Builder.Object as Object
+import Graphql.Internal.Encode as Encode exposing (Value)
+import Graphql.OptionalArgument exposing (OptionalArgument(..))
+import Graphql.SelectionSet exposing (SelectionSet)
+import Json.Decode as Decode
 
 
-placeholder : String
-placeholder =
-    ""
+buildNovaEvent :
+    NovaEventRequiredFields
+    -> NovaEvent
+buildNovaEvent required____ =
+    { name = required____.name, zasedaniId = required____.zasedaniId, pageName = required____.pageName, propsJson = required____.propsJson }
+
+
+type alias NovaEventRequiredFields =
+    { name : String
+    , zasedaniId : String
+    , pageName : String
+    , propsJson : String
+    }
+
+
+{-| Type for the NovaEvent input object.
+-}
+type alias NovaEvent =
+    { name : String
+    , zasedaniId : String
+    , pageName : String
+    , propsJson : String
+    }
+
+
+{-| Encode a NovaEvent into a value that can be used as an argument.
+-}
+encodeNovaEvent : NovaEvent -> Value
+encodeNovaEvent input____ =
+    Encode.maybeObject
+        [ ( "name", Encode.string input____.name |> Just ), ( "zasedaniId", Encode.string input____.zasedaniId |> Just ), ( "pageName", Encode.string input____.pageName |> Just ), ( "propsJson", Encode.string input____.propsJson |> Just ) ]

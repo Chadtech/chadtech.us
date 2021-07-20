@@ -7,10 +7,14 @@ port module Ports.FromJs exposing
     , map
     , none
     , subscription
+    , track
     )
 
+import Analytics
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
+import Util.Json.Decode as DecodeUtil
 
 
 
@@ -25,7 +29,7 @@ type Listener msg
 
 
 type Error
-    = NotFound String
+    = NotFound { type_ : String }
     | BodyDecodeFail Decode.Error
     | StructureDecodeFail Decode.Error
 
@@ -52,8 +56,8 @@ subscription errorMsg listener =
 errorToString : Error -> String
 errorToString error =
     case error of
-        NotFound str ->
-            "Message came in that we werent listening for : " ++ str
+        NotFound fields ->
+            "Message came in that we werent listening for : " ++ fields.type_
 
         BodyDecodeFail subError ->
             "Body decode error : " ++ Decode.errorToString subError
@@ -111,6 +115,34 @@ map toMsg listener =
 
 
 
+--------------------------------------------------------------------------------
+-- TRACK --
+--------------------------------------------------------------------------------
+
+
+track : Error -> Analytics.Event
+track error =
+    let
+        jsonError : Decode.Error -> Encode.Value
+        jsonError decodeError =
+            decodeError
+                |> DecodeUtil.errorToSensitiveString { sensitive = True }
+                |> Encode.string
+    in
+    case error of
+        NotFound _ ->
+            Analytics.none
+
+        BodyDecodeFail subError ->
+            Analytics.name "from js msg body decode fail"
+                |> Analytics.withProp "error" (jsonError subError)
+
+        StructureDecodeFail subError ->
+            Analytics.name "from js msg structure decode fail"
+                |> Analytics.withProp "error" (jsonError subError)
+
+
+
 ---------------------------------------------------------------
 -- INTERNAL HELPERS --
 ---------------------------------------------------------------
@@ -139,7 +171,7 @@ decode json listener =
                                 |> Result.mapError BodyDecodeFail
 
                         Nothing ->
-                            Err (NotFound type_)
+                            Err (NotFound { type_ = type_ })
 
                 Single listenerType_ decoder ->
                     if listenerType_ == type_ then
@@ -147,7 +179,7 @@ decode json listener =
                             |> Result.mapError BodyDecodeFail
 
                     else
-                        Err (NotFound type_)
+                        Err (NotFound { type_ = type_ })
 
         Err error ->
             Err <| StructureDecodeFail error

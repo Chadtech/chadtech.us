@@ -13,6 +13,7 @@ module Zasedani exposing
     , recordApiError
     , recordStorageDecodeError
     , setAdminPassword
+    , track
     , turnOnAdminMode
     , ziskatAnalytics
     , zmodernizovat
@@ -128,6 +129,19 @@ zmodernizovat zpr zasedani =
     case zpr of
         StorageUpdated storage ->
             datStorage storage zasedani
+
+
+
+--------------------------------------------------------------------------------
+-- TRACK --
+--------------------------------------------------------------------------------
+
+
+track : Zpr -> Analytics.Event
+track zpr =
+    case zpr of
+        StorageUpdated _ ->
+            Analytics.none
 
 
 

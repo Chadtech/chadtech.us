@@ -1,5 +1,6 @@
 module Api exposing
-    ( Error
+    ( CustomResponse
+    , Error
     , Handler
     , HasApi
     , Modelka
@@ -9,7 +10,9 @@ module Api exposing
     , customHandle
     , errorToString
     , handle
+    , handleEffectful
     , init
+    , mapResponseError
     , mutation
     , pendingRequests
     , query
@@ -39,9 +42,13 @@ type Error
         }
 
 
-type Response value key
+type alias Response value key =
+    CustomResponse Error value key
+
+
+type CustomResponse error value key
     = Response__Value value
-    | Response__Error Error
+    | Response__Error error
 
 
 type Request value
@@ -95,7 +102,7 @@ mapRequestCount fn modelka =
     }
 
 
-responseToResult : Response value key -> Result Error value
+responseToResult : CustomResponse error value key -> Result error value
 responseToResult response =
     case response of
         Response__Value value ->
@@ -157,6 +164,16 @@ graphUrl =
 --------------------------------------------------------------------------------
 
 
+mapResponseError : (a -> error) -> CustomResponse a value key -> CustomResponse error value key
+mapResponseError fn customResponse =
+    case customResponse of
+        Response__Value value ->
+            Response__Value value
+
+        Response__Error error ->
+            Response__Error <| fn error
+
+
 mutation : SelectionSet value RootMutation -> Request value
 mutation =
     Request << Graphql.Http.mutationRequest graphUrl
@@ -168,7 +185,7 @@ query =
 
 
 send :
-    { toZpr : Response value key -> zpr
+    { toZpr : CustomResponse Error value key -> zpr
     , req : Request value
     , modelka : HasApi modelka key
     }
@@ -180,7 +197,7 @@ send =
 sendCustom :
     Handler modelka key
     ->
-        { toZpr : Response value key -> zpr
+        { toZpr : CustomResponse Error value key -> zpr
         , req : Request value
         , modelka : modelka
         }
@@ -263,23 +280,32 @@ simpleHandler =
 
 
 handle :
-    Response value key
-    -> (Result Error value -> HasApi modelka key -> HasApi modelka key)
+    CustomResponse error value key
+    -> (Result error value -> HasApi modelka key -> HasApi modelka key)
     -> HasApi modelka key
     -> HasApi modelka key
 handle =
     customHandle simpleHandler
 
 
+handleEffectful :
+    CustomResponse error value key
+    -> (Result error value -> HasApi modelka key -> ( HasApi modelka key, Cmd zpr ))
+    -> HasApi modelka key
+    -> ( HasApi modelka key, Cmd zpr )
+handleEffectful =
+    customHandleEffectful simpleHandler
+
+
 customHandle :
     Handler modelka key
-    -> Response value key
-    -> (Result Error value -> modelka -> modelka)
+    -> CustomResponse error value key
+    -> (Result error value -> modelka -> modelka)
     -> modelka
     -> modelka
 customHandle handler response fn modelka =
     let
-        result : Result Error value
+        result : Result error value
         result =
             responseToResult response
 
@@ -292,3 +318,27 @@ customHandle handler response fn modelka =
             (handler.ziskatApi novaModelka
                 |> decrementRequests
             )
+
+
+customHandleEffectful :
+    Handler modelka key
+    -> CustomResponse error value key
+    -> (Result error value -> modelka -> ( modelka, Cmd zpr ))
+    -> modelka
+    -> ( modelka, Cmd zpr )
+customHandleEffectful handler response fn modelka =
+    let
+        result : Result error value
+        result =
+            responseToResult response
+
+        ( novaModelka, cmd ) =
+            fn result modelka
+    in
+    ( novaModelka
+        |> handler.datApi
+            (handler.ziskatApi novaModelka
+                |> decrementRequests
+            )
+    , cmd
+    )

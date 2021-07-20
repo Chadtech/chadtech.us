@@ -2,6 +2,7 @@ module Route.Admin exposing
     ( Route(..)
     , landing
     , parser
+    , toName
     , toPath
     )
 
@@ -53,3 +54,10 @@ toPath route =
     case route of
         Blog ->
             [ blogPath ]
+
+
+toName : Route -> String
+toName route =
+    case route of
+        Blog ->
+            "Blog"

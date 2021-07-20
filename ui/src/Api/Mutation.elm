@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Mutation exposing (CreateBlogpostV2RequiredArguments, createBlogpostV2)
+module Api.Mutation exposing (CreateBlogpostV2RequiredArguments, RecordAnalyticsRequiredArguments, apiVersion, createBlogpostV2, recordAnalytics)
 
 import Api.InputObject
 import Api.Interface
@@ -17,6 +17,22 @@ import Graphql.Operation exposing (RootMutation, RootQuery, RootSubscription)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet exposing (SelectionSet)
 import Json.Decode as Decode exposing (Decoder)
+
+
+apiVersion : SelectionSet String RootMutation
+apiVersion =
+    Object.selectionForField "String" "apiVersion" [] Decode.string
+
+
+type alias RecordAnalyticsRequiredArguments =
+    { events : List Api.InputObject.NovaEvent }
+
+
+recordAnalytics :
+    RecordAnalyticsRequiredArguments
+    -> SelectionSet String RootMutation
+recordAnalytics requiredArgs____ =
+    Object.selectionForField "String" "recordAnalytics" [ Argument.required "events" requiredArgs____.events (Api.InputObject.encodeNovaEvent |> Encode.list) ] Decode.string
 
 
 type alias CreateBlogpostV2RequiredArguments =

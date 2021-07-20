@@ -2,7 +2,7 @@ table! {
     analytics_event (id) {
         id -> Integer,
         name -> Varchar,
-        session_id -> Char,
+        zasedani_id -> Char,
         page_name -> Varchar,
         props_json -> Varchar,
     }

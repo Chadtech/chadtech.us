@@ -4,6 +4,7 @@ use crate::analytics;
 use crate::blogposts;
 use crate::db::Pool;
 use diesel::RunQueryDsl;
+use rand::Rng;
 
 pub struct Kontext {
     pub db_pool: Pool,
@@ -36,9 +37,41 @@ impl Mutation {
     }
     fn record_analytics(
         ktx: &Kontext,
-        events: Vec<analytics::event::NewSubmission>,
+        events: Vec<analytics::event::NovaEvent>,
     ) -> juniper::FieldResult<&str> {
-        Ok("Success")
+        use crate::schema::analytics_event;
+        let conn = ktx.db_pool.get()?;
+
+        let mut nova_events = Vec::new();
+        let mut rng = rand::thread_rng();
+
+        for event in events.iter() {
+            let id: i32 = rng.gen();
+            let nova_event = analytics::event::Nova {
+                id,
+                name: event.name.as_str(),
+                zasedani_id: event.zasedani_id.as_str(),
+                page_name: event.page_name.as_str(),
+                props_json: event.props_json.as_str(),
+            };
+
+            nova_events.push(nova_event);
+        }
+
+        let insert_result = diesel::insert_into(analytics_event::table)
+            .values(&nova_events)
+            .execute(&conn);
+
+        match insert_result {
+            Ok(_) => Ok("Success"),
+            Err(err) => {
+                let msg = err.to_string();
+                Err(FieldError::new(
+                    "Failed to record analytics events",
+                    graphql_value!({ "internal_error": msg }),
+                ))
+            }
+        }
     }
 
     fn create_blogpost_v2(

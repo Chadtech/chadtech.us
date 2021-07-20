@@ -1,6 +1,5 @@
 use crate::schema::analytics_event;
-use juniper::meta::MetaType;
-use juniper::{DefaultScalarValue, FromInputValue, GraphQLObject, GraphQLType, Registry};
+use juniper::{GraphQLInputObject, GraphQLObject};
 
 #[derive(Queryable, GraphQLObject)]
 #[graphql(description = "An analytics event")]
@@ -14,7 +13,7 @@ pub struct Event {
 
 #[derive(Insertable)]
 #[table_name = "analytics_event"]
-pub struct New<'a> {
+pub struct Nova<'a> {
     pub id: i32,
     pub name: &'a str,
     pub zasedani_id: &'a str,
@@ -22,32 +21,11 @@ pub struct New<'a> {
     pub props_json: &'a str,
 }
 
-#[derive(FromInputValue, GraphQLType)]
-pub struct NewSubmission {
+#[derive(GraphQLInputObject)]
+#[graphql(description = "An analytics event submission")]
+pub struct NovaEvent {
     pub name: String,
     pub zasedani_id: String,
     pub page_name: String,
     pub props_json: String,
-}
-
-impl GraphQLType<DefaultScalarValue> for NewSubmission {
-    fn name(_: &()) -> Option<&'static str> {
-        Some("Analytics Event")
-    }
-
-    fn meta<'r>(_: &(), registry: &mut Registry<'r>) -> MetaType<'r>
-    where
-        DefaultScalarValue: 'r,
-    {
-        let fields = &[
-            registry.field::<&String>("name", &()),
-            registry.field::<&String>("zasedani_id", &()),
-            registry.field::<&String>("page_name", &()),
-            registry.field::<&String>("props_json", &()),
-        ];
-
-        registry
-            .build_object_type::<NewSubmission>(&(), fields)
-            .into_meta()
-    }
 }

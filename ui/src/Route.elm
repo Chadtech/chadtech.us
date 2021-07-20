@@ -5,6 +5,7 @@ module Route exposing
     , fromAdminRoute
     , fromUrl
     , href
+    , toName
     , toString
     )
 
@@ -65,6 +66,19 @@ adminPath =
 ---------------------------------------------------------------
 -- API --
 ---------------------------------------------------------------
+
+
+toName : Route -> String
+toName route =
+    case route of
+        Landing ->
+            "Landing"
+
+        Blog ->
+            "Blog"
+
+        Admin subRoute ->
+            "Admin/" ++ Admin.toName subRoute
 
 
 toString : Route -> String

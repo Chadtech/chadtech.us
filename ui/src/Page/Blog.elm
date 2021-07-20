@@ -7,10 +7,12 @@ module Page.Blog exposing
     , poca
     , pohled
     , setLayout
+    , track
     , ziskatZasedani
     , zmodernizovat
     )
 
+import Analytics
 import Layout exposing (Layout)
 import Ports.FromJs as FromJs
 import Style.Color as Color
@@ -85,6 +87,19 @@ zmodernizovat zpr modelka =
     case zpr of
         Msg ->
             ( modelka, Cmd.none )
+
+
+
+--------------------------------------------------------------------------------
+-- TRACK --
+--------------------------------------------------------------------------------
+
+
+track : Zpr -> Analytics.Event
+track zpr =
+    case zpr of
+        Msg ->
+            Analytics.none
 
 
 

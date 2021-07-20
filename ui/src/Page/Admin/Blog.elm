@@ -6,9 +6,11 @@ module Page.Admin.Blog exposing
     , pendingRequests
     , poca
     , pohled
+    , track
     , zmodernizovat
     )
 
+import Analytics
 import Api exposing (HasApi)
 import Api.Object.Post as PostSS
 import Api.Query as Query
@@ -110,6 +112,19 @@ zmodernizovat zpr modelka =
     case zpr of
         Zpr ->
             ( modelka, Cmd.none )
+
+
+
+--------------------------------------------------------------------------------
+-- TRACK --
+--------------------------------------------------------------------------------
+
+
+track : Zpr -> Analytics.Event
+track zpr =
+    case zpr of
+        Zpr ->
+            Analytics.none
 
 
 

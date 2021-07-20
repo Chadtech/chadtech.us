@@ -9,11 +9,13 @@ module Page.Admin exposing
     , poca
     , pohled
     , setLayout
+    , track
     , ziskatZasedani
     , zmodernizovat
     )
 
 import Admin
+import Analytics
 import Api
 import Layout exposing (Layout)
 import Page.Admin.Blog as Blog
@@ -248,6 +250,25 @@ handleBlogLoaded result modelka =
             mapZasedani
                 (Zasedani.recordApiError error)
                 modelka
+
+
+
+--------------------------------------------------------------------------------
+-- TRACK --
+--------------------------------------------------------------------------------
+
+
+track : Zpr -> Analytics.Event
+track zpr =
+    case zpr of
+        PasswordFieldUpdated _ ->
+            Analytics.none
+
+        BlogZpr subZpr ->
+            Blog.track subZpr
+
+        BlogLoaded _ ->
+            Analytics.none
 
 
 

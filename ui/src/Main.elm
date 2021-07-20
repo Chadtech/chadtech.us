@@ -6,6 +6,7 @@ import Browser exposing (UrlRequest)
 import Browser.Navigation as Nav
 import Document exposing (Document)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import KeyCmd exposing (KeyCmd)
 import Layout exposing (Layout)
 import Page.Admin as Admin
@@ -67,6 +68,10 @@ superZmodernizovat : Zpr -> Result Error Modelka -> ( Result Error Modelka, Cmd 
 superZmodernizovat zpr result =
     case result of
         Ok modelka ->
+            let
+                analyticsEvent =
+                    track zpr
+            in
             zmodernizovat zpr modelka
                 |> Tuple.mapFirst Ok
 
@@ -378,6 +383,49 @@ handleRouteChange maybeRoute modelka =
 
                             else
                                 pageNotFound ()
+
+
+
+--------------------------------------------------------------------------------
+-- TRACK --
+--------------------------------------------------------------------------------
+
+
+track : Zpr -> Analytics.Event
+track zpr =
+    case zpr of
+        MsgDecodeFailed error ->
+            FromJs.track error
+
+        UrlRequested _ ->
+            Analytics.none
+
+        RouteChanged maybeRoute ->
+            Analytics.name "route changed"
+                |> Analytics.withProp
+                    "route"
+                    (Maybe.map Route.toName maybeRoute
+                        |> Maybe.withDefault "Unknown Route"
+                        |> Encode.string
+                    )
+
+        BlogZpr subZpr ->
+            Blog.track subZpr
+
+        AdminZpr subZpr ->
+            Admin.track subZpr
+
+        OpenAdminPanelPressed ->
+            Analytics.name "Admin Panel Pressed"
+
+        OpenDevPanelPressed ->
+            Analytics.name "Dev Panel Pressed"
+
+        ZasedaniZpr subZpr ->
+            Zasedani.track subZpr
+
+        AnalyticsZpr _ ->
+            Analytics.none
 
 
 
