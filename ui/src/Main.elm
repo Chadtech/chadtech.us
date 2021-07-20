@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Analytics
 import Api
 import Browser exposing (UrlRequest)
 import Browser.Navigation as Nav
@@ -63,10 +64,10 @@ superPohled result =
 
 
 superZmodernizovat : Zpr -> Result Error Modelka -> ( Result Error Modelka, Cmd Zpr )
-superZmodernizovat msg result =
+superZmodernizovat zpr result =
     case result of
-        Ok model ->
-            zmodernizovat msg model
+        Ok modelka ->
+            zmodernizovat zpr modelka
                 |> Tuple.mapFirst Ok
 
         Err error ->
@@ -96,6 +97,7 @@ type Zpr
     | OpenAdminPanelPressed
     | OpenDevPanelPressed
     | ZasedaniZpr Zasedani.Zpr
+    | AnalyticsZpr Analytics.Zpr
 
 
 type Error
@@ -144,9 +146,21 @@ pendingApiRequests modelka =
             Admin.pendingRequests subModelka
 
 
+datAnalytics : Analytics.Modelka -> Modelka -> Modelka
+datAnalytics analyticsModelka modelka =
+    datZasedani
+        (Zasedani.datAnalytics analyticsModelka <| ziskatZasedani modelka)
+        modelka
+
+
+ziskatAnalytics : Modelka -> Analytics.Modelka
+ziskatAnalytics =
+    ziskatZasedani >> Zasedani.ziskatAnalytics
+
+
 ziskatZasedani : Modelka -> Zasedani
-ziskatZasedani model =
-    case model of
+ziskatZasedani modelka =
+    case modelka of
         PageNotFound zasedani _ ->
             zasedani
 
@@ -202,8 +216,8 @@ setLayout layout model =
 
 
 mapLayout : (Layout -> Layout) -> Modelka -> Modelka
-mapLayout f modelka =
-    setLayout (f <| getLayout modelka) modelka
+mapLayout fn modelka =
+    setLayout (fn <| getLayout modelka) modelka
 
 
 
@@ -281,7 +295,7 @@ zmodernizovat zpr modelka =
                     modelka |> CmdUtil.withNoCmd
 
         ZasedaniZpr subZpr ->
-            ( mapZasedani (Zasedani.update subZpr) modelka
+            ( mapZasedani (Zasedani.zmodernizovat subZpr) modelka
             , Cmd.none
             )
 
@@ -290,6 +304,18 @@ zmodernizovat zpr modelka =
                 Zasedani.openDevPanel
                 modelka
             , Cmd.none
+            )
+
+        AnalyticsZpr subZpr ->
+            let
+                ( novaAnalyticsModelka, cmd ) =
+                    Analytics.zmodernizovat
+                        { zasedaniId = Zasedani.id <| ziskatZasedani modelka }
+                        subZpr
+                        (ziskatAnalytics modelka)
+            in
+            ( datAnalytics novaAnalyticsModelka modelka
+            , Cmd.map AnalyticsZpr cmd
             )
 
 

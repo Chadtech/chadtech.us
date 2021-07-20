@@ -176,8 +176,8 @@ navItemToLabel navItem =
             "Blog"
 
 
-setPasswordField : String -> Modelka -> Modelka
-setPasswordField newField modelka =
+datPasswordField : String -> Modelka -> Modelka
+datPasswordField newField modelka =
     { modelka | adminPassword = newField }
 
 
@@ -209,7 +209,7 @@ zmodernizovat zpr modelka =
     case zpr of
         PasswordFieldUpdated str ->
             ( modelka
-                |> setPasswordField str
+                |> datPasswordField str
                 |> mapZasedani (Zasedani.setAdminPassword str)
             , Admin.save str
             )

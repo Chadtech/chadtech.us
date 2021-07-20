@@ -11,7 +11,7 @@ use crate::flags::Flags;
 use crate::graphql_schema::{create_schema, Schema};
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{http, web, App, HttpResponse, HttpServer};
+use actix_web::{web, App, HttpResponse, HttpServer};
 use juniper::http::graphiql::graphiql_source;
 use juniper::http::GraphQLRequest;
 use notify::{raw_watcher, RecursiveMode, Watcher};
@@ -20,6 +20,7 @@ use std::process::Command;
 use std::sync::mpsc::channel;
 use std::thread;
 
+mod analytics;
 mod blogposts;
 mod db;
 mod flags;

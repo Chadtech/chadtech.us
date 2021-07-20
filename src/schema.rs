@@ -1,6 +1,21 @@
 table! {
+    analytics_event (id) {
+        id -> Integer,
+        name -> Varchar,
+        session_id -> Char,
+        page_name -> Varchar,
+        props_json -> Varchar,
+    }
+}
+
+table! {
     blogpostv2 (id) {
         id -> Integer,
         title -> Varchar,
     }
 }
+
+allow_tables_to_appear_in_same_query!(
+    analytics_event,
+    blogpostv2,
+);

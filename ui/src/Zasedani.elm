@@ -2,9 +2,11 @@ module Zasedani exposing
     ( Zasedani
     , Zpr
     , adminMode
+    , datAnalytics
     , devPanel
     , errorsAsStrs
     , goTo
+    , id
     , listener
     , openDevPanel
     , poca
@@ -12,10 +14,12 @@ module Zasedani exposing
     , recordStorageDecodeError
     , setAdminPassword
     , turnOnAdminMode
-    , update
+    , ziskatAnalytics
+    , zmodernizovat
     )
 
 import Admin
+import Analytics
 import Api
 import Browser.Navigation as Nav
 import Json.Decode as Decode
@@ -38,6 +42,8 @@ type alias Zasedani =
     , storage : Storage
     , devPanel : Maybe DevPanel.Modelka
     , errors : List Error
+    , analytics : Analytics.Modelka
+    , id : String
     }
 
 
@@ -53,12 +59,14 @@ type Zpr
 
 
 ---------------------------------------------------------------
--- INIT --
+-- POCA --
 ---------------------------------------------------------------
 
 
 type alias Flags =
-    { storage : Storage }
+    { storage : Storage
+    , id : String
+    }
 
 
 poca : Decode.Value -> Nav.Key -> Result Decode.Error Zasedani
@@ -80,11 +88,14 @@ poca json navKey =
                     |> MaybeUtil.toList
                 ]
                     |> List.concat
+            , analytics = Analytics.poca
+            , id = flags.id
             }
     in
     Decode.decodeValue
-        (Decode.map Flags
+        (Decode.map2 Flags
             (Decode.field "storage" Storage.decoder)
+            (Decode.field "id" Decode.string)
         )
         json
         |> Result.map fromFlags
@@ -96,8 +107,8 @@ poca json navKey =
 ---------------------------------------------------------------
 
 
-setStorage : Storage -> Zasedani -> Zasedani
-setStorage storage zasedani =
+datStorage : Storage -> Zasedani -> Zasedani
+datStorage storage zasedani =
     { zasedani | storage = storage }
 
 
@@ -108,15 +119,15 @@ recordError error zasedani =
 
 
 ---------------------------------------------------------------
--- UPDATE --
+-- ZMODERNIZOVAT --
 ---------------------------------------------------------------
 
 
-update : Zpr -> Zasedani -> Zasedani
-update msg zasedani =
-    case msg of
+zmodernizovat : Zpr -> Zasedani -> Zasedani
+zmodernizovat zpr zasedani =
+    case zpr of
         StorageUpdated storage ->
-            setStorage storage zasedani
+            datStorage storage zasedani
 
 
 
@@ -142,6 +153,11 @@ errorToString args superError =
 ---------------------------------------------------------------
 -- API --
 ---------------------------------------------------------------
+
+
+id : Zasedani -> String
+id zasedani =
+    zasedani.id
 
 
 recordApiError : Api.Error -> Zasedani -> Zasedani
@@ -197,7 +213,19 @@ devPanel =
 
 errorsAsStrs : { sensitive : Bool } -> Zasedani -> List String
 errorsAsStrs args zasedani =
-    List.map (errorToString { sensitive = args.sensitive }) zasedani.errors
+    List.map
+        (errorToString { sensitive = args.sensitive })
+        zasedani.errors
+
+
+datAnalytics : Analytics.Modelka -> Zasedani -> Zasedani
+datAnalytics analyticsModelka zasedani =
+    { zasedani | analytics = analyticsModelka }
+
+
+ziskatAnalytics : Zasedani -> Analytics.Modelka
+ziskatAnalytics zasedani =
+    zasedani.analytics
 
 
 

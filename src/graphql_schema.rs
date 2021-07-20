@@ -1,5 +1,6 @@
 use juniper::{FieldError, FieldResult, RootNode};
 
+use crate::analytics;
 use crate::blogposts;
 use crate::db::Pool;
 use diesel::RunQueryDsl;
@@ -30,6 +31,16 @@ pub struct Mutation;
 
 #[juniper::object(Context = Kontext)]
 impl Mutation {
+    fn api_version() -> &str {
+        "0.0.0"
+    }
+    fn record_analytics(
+        ktx: &Kontext,
+        events: Vec<analytics::event::NewSubmission>,
+    ) -> juniper::FieldResult<&str> {
+        Ok("Success")
+    }
+
     fn create_blogpost_v2(
         ktx: &Kontext,
         date: f64,

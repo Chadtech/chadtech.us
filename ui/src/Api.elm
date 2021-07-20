@@ -10,6 +10,7 @@ module Api exposing
     , errorToString
     , handle
     , init
+    , mutation
     , pendingRequests
     , query
     , send
@@ -21,7 +22,7 @@ module Api exposing
 import CodeGen.Api.Root as ApiRoot
 import Graphql.Http
 import Graphql.Http.GraphqlError exposing (GraphqlError)
-import Graphql.Operation exposing (RootQuery)
+import Graphql.Operation exposing (RootMutation, RootQuery)
 import Graphql.SelectionSet exposing (SelectionSet)
 
 
@@ -145,15 +146,25 @@ graphqlRawErrorToString args graphqlError =
                     "Bad payload"
 
 
+graphUrl : String
+graphUrl =
+    ApiRoot.asString ++ "/graphql"
+
+
 
 --------------------------------------------------------------------------------
 -- API --
 --------------------------------------------------------------------------------
 
 
+mutation : SelectionSet value RootMutation -> Request value
+mutation =
+    Request << Graphql.Http.mutationRequest graphUrl
+
+
 query : SelectionSet value RootQuery -> Request value
 query =
-    Request << Graphql.Http.queryRequest (ApiRoot.asString ++ "/graphql")
+    Request << Graphql.Http.queryRequest graphUrl
 
 
 send :

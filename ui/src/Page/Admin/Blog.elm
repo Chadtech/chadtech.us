@@ -14,7 +14,7 @@ import Api.Object.Post as PostSS
 import Api.Query as Query
 import Graphql.Http
 import Graphql.SelectionSet as SS
-import View.Row exposing (Row)
+import View.Row as Row exposing (Row)
 
 
 
@@ -120,4 +120,6 @@ zmodernizovat zpr modelka =
 
 pohled : Modelka -> List (Row Zpr)
 pohled modelka =
-    []
+    [ Row.fromString "Posts V2"
+    , Row.fromCells []
+    ]
