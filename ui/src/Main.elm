@@ -11,6 +11,7 @@ import KeyCmd exposing (KeyCmd)
 import Layout exposing (Layout)
 import Page.Admin as Admin
 import Page.Blog as Blog
+import Page.ComponentLibrary as ComponentLibrary
 import Ports.FromJs as FromJs
 import Route exposing (Route)
 import Url exposing (Url)
@@ -89,6 +90,7 @@ type Modelka
     = PageNotFound Zasedani Layout
     | Blog Blog.Modelka
     | Admin Admin.Modelka
+    | ComponentLibrary ComponentLibrary.Modelka
 
 
 {-| zpráva
@@ -144,11 +146,14 @@ pendingApiRequests modelka =
         PageNotFound _ _ ->
             Api.zero
 
-        Blog _ ->
-            Api.zero
+        Blog subModelka ->
+            Blog.pendingRequests subModelka
 
         Admin subModelka ->
             Admin.pendingRequests subModelka
+
+        ComponentLibrary _ ->
+            Api.zero
 
 
 datAnalytics : Analytics.Modelka -> Modelka -> Modelka
@@ -384,6 +389,24 @@ handleRouteChange maybeRoute modelka =
                             else
                                 pageNotFound ()
 
+                Route.ComponentLibrary subRoute ->
+                    case modelka of
+                        ComponentLibrary subModelka ->
+                            ComponentLibrary.handleRouteChange
+                                subRoute
+                                subModelka
+                                |> Tuple.mapFirst ComponentLibrary
+                                |> Tuple.mapSecond (Cmd.map ComponentLibraryZpr)
+
+                        _ ->
+                            if Zasedani.adminMode session /= Nothing then
+                                ComponentLibrary.poca session layout subRoute
+                                    |> Tuple.mapFirst ComponentLibrary
+                                    |> Tuple.mapSecond (Cmd.map ComponentLibraryZpr)
+
+                            else
+                                pageNotFound ()
+
 
 
 --------------------------------------------------------------------------------
@@ -496,6 +519,8 @@ subscriptions model =
         MsgDecodeFailed
         (incomingPortsListeners model)
     , KeyCmd.subscriptions keyCmds
+    , Zasedani.subscriptions
+        |> Sub.map ZasedaniZpr
     ]
         |> Sub.batch
 

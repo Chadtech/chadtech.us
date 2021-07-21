@@ -33,6 +33,7 @@ type NavItem
     | Twitter
     | Github
     | Admin
+    | ComponentLibrary
 
 
 
@@ -68,6 +69,9 @@ navigation zasedani activeNavItem =
                 Admin ->
                     "Admin"
 
+                ComponentLibrary ->
+                    "Component Library"
+
         withClickHandling : NavItem -> Button msg -> Button msg
         withClickHandling navItem =
             case navItem of
@@ -84,6 +88,9 @@ navigation zasedani activeNavItem =
 
                 Admin ->
                     Button.withLink Route.admin
+
+                ComponentLibrary ->
+                    Button.withLink Route.componentLibrary
 
         navItemView : NavItem -> Row msg
         navItemView navItem =
@@ -107,6 +114,9 @@ navigation zasedani activeNavItem =
                     True
 
                 Admin ->
+                    Zasedani.adminMode zasedani /= Nothing
+
+                ComponentLibrary ->
                     Zasedani.adminMode zasedani /= Nothing
     in
     allNavItems
@@ -144,6 +154,9 @@ routeToNavItem route =
 
         Route.Admin _ ->
             Admin
+
+        Route.ComponentLibrary _ ->
+            ComponentLibrary
 
 
 setActiveRoute : Maybe NavItem -> Layout -> Layout

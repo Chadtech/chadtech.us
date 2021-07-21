@@ -13,6 +13,7 @@ module Zasedani exposing
     , recordApiError
     , recordStorageDecodeError
     , setAdminPassword
+    , subscriptions
     , track
     , turnOnAdminMode
     , ziskatAnalytics
@@ -27,6 +28,7 @@ import Json.Decode as Decode
 import Ports.FromJs as FromJs
 import Route exposing (Route)
 import Storage exposing (Storage)
+import Time
 import Util.Maybe as MaybeUtil
 import View.DevPanel as DevPanel
 
@@ -45,6 +47,7 @@ type alias Zasedani =
     , errors : List Error
     , analytics : Analytics.Modelka
     , id : String
+    , currentTime : Time.Posix
     }
 
 
@@ -56,6 +59,7 @@ type Error
 
 type Zpr
     = StorageUpdated Storage
+    | GotCurrentTime Time.Posix
 
 
 
@@ -67,6 +71,7 @@ type Zpr
 type alias Flags =
     { storage : Storage
     , id : String
+    , currentTime : Time.Posix
     }
 
 
@@ -91,12 +96,16 @@ poca json navKey =
                     |> List.concat
             , analytics = Analytics.poca
             , id = flags.id
+            , currentTime = flags.currentTime
             }
     in
     Decode.decodeValue
-        (Decode.map2 Flags
+        (Decode.map3 Flags
             (Decode.field "storage" Storage.decoder)
             (Decode.field "id" Decode.string)
+            (Decode.field "currentTime"
+                (Decode.map Time.millisToPosix Decode.int)
+            )
         )
         json
         |> Result.map fromFlags
@@ -130,6 +139,9 @@ zmodernizovat zpr zasedani =
         StorageUpdated storage ->
             datStorage storage zasedani
 
+        GotCurrentTime posix ->
+            setCurrentTime posix zasedani
+
 
 
 --------------------------------------------------------------------------------
@@ -141,6 +153,9 @@ track : Zpr -> Analytics.Event
 track zpr =
     case zpr of
         StorageUpdated _ ->
+            Analytics.none
+
+        GotCurrentTime _ ->
             Analytics.none
 
 
@@ -161,6 +176,11 @@ errorToString args superError =
 
         ApiError error ->
             "Api Error : " ++ Api.errorToString { sensitive = args.sensitive } error
+
+
+setCurrentTime : Time.Posix -> Zasedani -> Zasedani
+setCurrentTime time zasedani =
+    { zasedani | currentTime = time }
 
 
 
@@ -251,3 +271,14 @@ ziskatAnalytics zasedani =
 listener : FromJs.Listener Zpr
 listener =
     Storage.listener StorageUpdated
+
+
+
+---------------------------------------------------------------
+-- SUBSCRIPTIONS --
+---------------------------------------------------------------
+
+
+subscriptions : Sub Zpr
+subscriptions =
+    Time.every 1000 GotCurrentTime

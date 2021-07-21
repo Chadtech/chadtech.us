@@ -2,7 +2,9 @@ module Route exposing
     ( Route(..)
     , admin
     , blog
+    , componentLibrary
     , fromAdminRoute
+    , fromComponentLibraryRoute
     , fromUrl
     , href
     , toName
@@ -12,6 +14,7 @@ module Route exposing
 import Html.Styled exposing (Attribute)
 import Html.Styled.Attributes as A
 import Route.Admin as Admin
+import Route.ComponentLibrary as ComponentLibrary
 import Url exposing (Url)
 import Url.Builder as UrlBuilder
 import Url.Parser as P exposing ((</>), Parser)
@@ -27,6 +30,7 @@ type Route
     = Landing
     | Blog
     | Admin Admin.Route
+    | ComponentLibrary ComponentLibrary.Route
 
 
 
@@ -62,6 +66,11 @@ adminPath =
     "admin"
 
 
+componentLibraryPath : String
+componentLibraryPath =
+    "componentlibrary"
+
+
 
 ---------------------------------------------------------------
 -- API --
@@ -80,6 +89,9 @@ toName route =
         Admin subRoute ->
             "Admin/" ++ Admin.toName subRoute
 
+        ComponentLibrary subRoute ->
+            "Component Library/" ++ ComponentLibrary.toName subRoute
+
 
 toString : Route -> String
 toString route =
@@ -95,6 +107,9 @@ toString route =
 
                 Admin subRoute ->
                     adminPath :: Admin.toPath subRoute
+
+                ComponentLibrary subRoute ->
+                    componentLibraryPath :: ComponentLibrary.toPath subRoute
     in
     UrlBuilder.absolute path []
 
@@ -109,9 +124,19 @@ admin =
     fromAdminRoute Admin.landing
 
 
+componentLibrary : Route
+componentLibrary =
+    fromComponentLibraryRoute ComponentLibrary.landing
+
+
 fromAdminRoute : Admin.Route -> Route
 fromAdminRoute =
     Admin
+
+
+fromComponentLibraryRoute : ComponentLibrary.Route -> Route
+fromComponentLibraryRoute =
+    ComponentLibrary
 
 
 fromUrl : Url -> Maybe Route
