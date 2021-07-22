@@ -4,6 +4,7 @@ module Page.Blog exposing
     , datZasedani
     , getLayout
     , incomingPortsListener
+    , pendingRequests
     , poca
     , pohled
     , setLayout
@@ -13,6 +14,7 @@ module Page.Blog exposing
     )
 
 import Analytics
+import Api
 import Layout exposing (Layout)
 import Ports.FromJs as FromJs
 import Style.Color as Color
@@ -30,7 +32,12 @@ import Zasedani exposing (Zasedani)
 type alias Modelka =
     { zasedani : Zasedani
     , layout : Layout
+    , api : Api.Modelka BlogApiKey
     }
+
+
+type BlogApiKey
+    = BlogApiKey
 
 
 type Zpr
@@ -47,6 +54,7 @@ poca : Zasedani -> Layout -> Modelka
 poca zasedani layout =
     { zasedani = zasedani
     , layout = layout
+    , api = Api.init
     }
 
 
@@ -54,6 +62,11 @@ poca zasedani layout =
 --------------------------------------------------------------------------------
 -- API --
 --------------------------------------------------------------------------------
+
+
+pendingRequests : Modelka -> Api.PendingRequestCount
+pendingRequests modelka =
+    Api.pendingRequests modelka.api
 
 
 datZasedani : Zasedani -> Modelka -> Modelka

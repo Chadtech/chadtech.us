@@ -1,7 +1,9 @@
-module Page.ComponentLibrary exposing (Modelka, Zpr, poca)
+module Page.ComponentLibrary exposing (Modelka, Zpr, datZasedani, getLayout, handleRouteChange, mapZasedani, poca, pohled, setLayout, track, ziskatZasedani, zmodernizovat)
 
+import Analytics
 import Layout exposing (Layout)
 import Route.ComponentLibrary as Route exposing (Route)
+import View.Cell exposing (Cell)
 import Zasedani exposing (Zasedani)
 
 
@@ -53,6 +55,37 @@ handleRouteChange route =
 
 
 --------------------------------------------------------------------------------
+-- API --
+--------------------------------------------------------------------------------
+
+
+mapZasedani : (Zasedani -> Zasedani) -> Modelka -> Modelka
+mapZasedani f model =
+    datZasedani (f <| ziskatZasedani model) model
+
+
+datZasedani : Zasedani -> Modelka -> Modelka
+datZasedani zasedani modelka =
+    { modelka | zasedani = zasedani }
+
+
+ziskatZasedani : Modelka -> Zasedani
+ziskatZasedani modelka =
+    modelka.zasedani
+
+
+getLayout : Modelka -> Layout
+getLayout model =
+    model.layout
+
+
+setLayout : Layout -> Modelka -> Modelka
+setLayout layout model =
+    { model | layout = layout }
+
+
+
+--------------------------------------------------------------------------------
 -- HELPERS --
 --------------------------------------------------------------------------------
 
@@ -67,3 +100,40 @@ routeToPage route =
     case route of
         Route.Button ->
             Page__Button
+
+
+
+--------------------------------------------------------------------------------
+-- POHLED --
+--------------------------------------------------------------------------------
+
+
+pohled : Modelka -> List (Cell Zpr)
+pohled modelka =
+    []
+
+
+
+---------------------------------------------------------------
+-- ZMODERNIZOVAT --
+---------------------------------------------------------------
+
+
+zmodernizovat : Zpr -> Modelka -> Modelka
+zmodernizovat zpr modelka =
+    case zpr of
+        Zpr ->
+            modelka
+
+
+
+--------------------------------------------------------------------------------
+-- POHLED --
+--------------------------------------------------------------------------------
+
+
+track : Zpr -> Analytics.Event
+track zpr =
+    case zpr of
+        Zpr ->
+            Analytics.none

@@ -105,6 +105,7 @@ type Zpr
     | OpenDevPanelPressed
     | ZasedaniZpr Zasedani.Zpr
     | AnalyticsZpr Analytics.Zpr
+    | ComponentLibraryZpr ComponentLibrary.Zpr
 
 
 type Error
@@ -180,6 +181,9 @@ ziskatZasedani modelka =
         Admin subModelka ->
             Admin.ziskatZasedani subModelka
 
+        ComponentLibrary subModelka ->
+            ComponentLibrary.ziskatZasedani subModelka
+
 
 datZasedani : Zasedani -> Modelka -> Modelka
 datZasedani zasedani model =
@@ -193,6 +197,9 @@ datZasedani zasedani model =
         Admin subModel ->
             Admin <| Admin.datZasedani zasedani subModel
 
+        ComponentLibrary subModelka ->
+            ComponentLibrary <| ComponentLibrary.datZasedani zasedani subModelka
+
 
 mapZasedani : (Zasedani -> Zasedani) -> Modelka -> Modelka
 mapZasedani f model =
@@ -205,11 +212,14 @@ getLayout model =
         PageNotFound _ layout ->
             layout
 
-        Blog subModel ->
-            Blog.getLayout subModel
+        Blog subModelka ->
+            Blog.getLayout subModelka
 
-        Admin subModel ->
-            Admin.getLayout subModel
+        Admin subModelka ->
+            Admin.getLayout subModelka
+
+        ComponentLibrary subModelka ->
+            ComponentLibrary.getLayout subModelka
 
 
 setLayout : Layout -> Modelka -> Modelka
@@ -223,6 +233,9 @@ setLayout layout model =
 
         Admin subModel ->
             Admin <| Admin.setLayout layout subModel
+
+        ComponentLibrary subModelka ->
+            ComponentLibrary <| ComponentLibrary.setLayout layout subModelka
 
 
 mapLayout : (Layout -> Layout) -> Modelka -> Modelka
@@ -328,6 +341,17 @@ zmodernizovat zpr modelka =
             , Cmd.map AnalyticsZpr cmd
             )
 
+        ComponentLibraryZpr subZpr ->
+            case modelka of
+                ComponentLibrary subModelka ->
+                    ( ComponentLibrary.zmodernizovat subZpr subModelka
+                        |> ComponentLibrary
+                    , Cmd.none
+                    )
+
+                _ ->
+                    modelka |> CmdUtil.withNoCmd
+
 
 superHandleRouteChange : Maybe Route -> Modelka -> ( Modelka, Cmd Zpr )
 superHandleRouteChange maybeRoute modelka =
@@ -392,17 +416,19 @@ handleRouteChange maybeRoute modelka =
                 Route.ComponentLibrary subRoute ->
                     case modelka of
                         ComponentLibrary subModelka ->
-                            ComponentLibrary.handleRouteChange
+                            ( ComponentLibrary.handleRouteChange
                                 subRoute
                                 subModelka
-                                |> Tuple.mapFirst ComponentLibrary
-                                |> Tuple.mapSecond (Cmd.map ComponentLibraryZpr)
+                                |> ComponentLibrary
+                            , Cmd.none
+                            )
 
                         _ ->
                             if Zasedani.adminMode session /= Nothing then
-                                ComponentLibrary.poca session layout subRoute
-                                    |> Tuple.mapFirst ComponentLibrary
-                                    |> Tuple.mapSecond (Cmd.map ComponentLibraryZpr)
+                                ( ComponentLibrary.poca session layout subRoute
+                                    |> ComponentLibrary
+                                , Cmd.none
+                                )
 
                             else
                                 pageNotFound ()
@@ -450,6 +476,9 @@ track zpr =
         AnalyticsZpr _ ->
             Analytics.none
 
+        ComponentLibraryZpr subZpr ->
+            ComponentLibrary.track subZpr
+
 
 
 --------------------------------------------------------------------------------
@@ -473,6 +502,10 @@ pohled modelka =
                 Admin subModelka ->
                     Admin.pohled subModelka
                         |> List.map (Cell.map AdminZpr)
+
+                ComponentLibrary subModelka ->
+                    ComponentLibrary.pohled subModelka
+                        |> List.map (Cell.map ComponentLibraryZpr)
 
         layout : Layout
         layout =
@@ -550,6 +583,9 @@ incomingPortsListeners model =
 
                 Admin _ ->
                     FromJs.map AdminZpr Admin.incomingPortsListener
+
+                ComponentLibrary _ ->
+                    FromJs.none
     in
     [ Zasedani.listener
         |> FromJs.map ZasedaniZpr
