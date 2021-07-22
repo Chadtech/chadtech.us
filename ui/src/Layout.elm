@@ -44,10 +44,29 @@ type NavItem
 
 allNavItems : List NavItem
 allNavItems =
+    let
+        _ =
+            case Blog of
+                Blog ->
+                    ()
+
+                Twitter ->
+                    ()
+
+                Github ->
+                    ()
+
+                Admin ->
+                    ()
+
+                ComponentLibrary ->
+                    ()
+    in
     [ Blog
     , Twitter
     , Github
     , Admin
+    , ComponentLibrary
     ]
 
 
@@ -92,6 +111,10 @@ navigation zasedani activeNavItem =
                 ComponentLibrary ->
                     Button.withLink Route.componentLibrary
 
+        width : Size
+        width =
+            Size.extraLarge 3
+
         navItemView : NavItem -> Row msg
         navItemView navItem =
             Button.fromLabel (toLabel navItem)
@@ -99,7 +122,9 @@ navigation zasedani activeNavItem =
                 |> Button.when
                     (Just navItem == activeNavItem)
                     Button.active
-                |> Button.toRow
+                |> Button.toCell
+                |> Cell.withExactWidth width
+                |> Row.fromCell
 
         showNavItem : NavItem -> Bool
         showNavItem navItem =
@@ -124,7 +149,7 @@ navigation zasedani activeNavItem =
         |> List.map navItemView
         |> Row.withSpaceBetween gapSize
         |> Row.toCell
-        |> Cell.withExactWidth (Size.extraLarge 3)
+        |> Cell.withExactWidth width
 
 
 headerRow : Row msg

@@ -1,9 +1,15 @@
 module Page.ComponentLibrary exposing (Modelka, Zpr, datZasedani, getLayout, handleRouteChange, mapZasedani, poca, pohled, setLayout, track, ziskatZasedani, zmodernizovat)
 
 import Analytics
+import Html.Styled as H exposing (Html)
 import Layout exposing (Layout)
-import Route.ComponentLibrary as Route exposing (Route)
-import View.Cell exposing (Cell)
+import Route
+import Route.ComponentLibrary as ComponentLibraryRoute exposing (Route)
+import Style.Size as Size exposing (Size)
+import SyntaxHighlight
+import View.Button as Button
+import View.Cell as Cell exposing (Cell)
+import View.Row as Row exposing (Row)
 import Zasedani exposing (Zasedani)
 
 
@@ -20,8 +26,20 @@ type alias Modelka =
     }
 
 
+type alias Example zpr =
+    { code : String
+    , pohled : Cell zpr
+    }
+
+
 type Page
     = Page__Button
+    | Page__List
+
+
+type NavItem
+    = NavItem__Button
+    | NavItem__List
 
 
 type Zpr
@@ -98,8 +116,57 @@ datPage page modelka =
 routeToPage : Route -> Page
 routeToPage route =
     case route of
-        Route.Button ->
+        ComponentLibraryRoute.Button ->
             Page__Button
+
+        ComponentLibraryRoute.List ->
+            Page__List
+
+
+navItemToLabel : NavItem -> String
+navItemToLabel navItem =
+    case navItem of
+        NavItem__Button ->
+            "Button"
+
+        NavItem__List ->
+            "List"
+
+
+navItemToRoute : NavItem -> Route
+navItemToRoute navItem =
+    case navItem of
+        NavItem__Button ->
+            ComponentLibraryRoute.Button
+
+        NavItem__List ->
+            ComponentLibraryRoute.List
+
+
+pageToNavItem : Page -> NavItem
+pageToNavItem page =
+    case page of
+        Page__Button ->
+            NavItem__Button
+
+        Page__List ->
+            NavItem__List
+
+
+navItems : List NavItem
+navItems =
+    let
+        _ =
+            case NavItem__Button of
+                NavItem__Button ->
+                    ()
+
+                NavItem__List ->
+                    ()
+    in
+    [ NavItem__Button
+    , NavItem__List
+    ]
 
 
 
@@ -110,7 +177,102 @@ routeToPage route =
 
 pohled : Modelka -> List (Cell Zpr)
 pohled modelka =
-    []
+    [ nav modelka.page
+    , body modelka.page
+    ]
+
+
+nav : Page -> Cell Zpr
+nav page =
+    let
+        width : Size
+        width =
+            Size.extraLarge 4
+
+        navItemView : NavItem -> Row Zpr
+        navItemView navItem =
+            Button.fromLabel
+                (navItemToLabel navItem)
+                |> Button.withLink
+                    (Route.fromComponentLibraryRoute <|
+                        navItemToRoute navItem
+                    )
+                |> Button.when (navItem == pageToNavItem page) Button.active
+                |> Button.toCell
+                |> Cell.withExactWidth width
+                |> Row.fromCell
+    in
+    navItems
+        |> List.map navItemView
+        |> Row.withSpaceBetween Size.small
+        |> Row.toCell
+        |> Cell.withExactWidth width
+
+
+body : Page -> Cell Zpr
+body page =
+    case page of
+        Page__Button ->
+            buttonPage
+
+        Page__List ->
+            listPage
+
+
+listPage : Cell Zpr
+listPage =
+    Cell.none
+
+
+buttonPage : Cell Zpr
+buttonPage =
+    let
+        simpleExample : Example Zpr
+        simpleExample =
+            let
+                button : Cell zpr
+                button =
+                    Button.fromLabel "Button"
+                        |> Button.toCell
+            in
+            { code = """
+button : Cell zpr
+button =
+    Button.fromLabel "Button"
+        |> Button.toCell
+            """
+            , pohled =
+                [ button ]
+                    |> List.map Row.fromCell
+                    |> Row.toCell
+            }
+    in
+    [ simpleExample ]
+        |> List.map exampleToRow
+        |> Row.toCell
+
+
+exampleToRow : Example zpr -> Row zpr
+exampleToRow example =
+    let
+        codeHtml : List (Html zpr)
+        codeHtml =
+            case SyntaxHighlight.elm example.code of
+                Ok code ->
+                    [ SyntaxHighlight.useTheme SyntaxHighlight.monokai
+                    , SyntaxHighlight.toBlockHtml Nothing code
+                    ]
+                        |> List.map H.fromUnstyled
+
+                Err _ ->
+                    [ H.text "ERROR PARSING CODE" ]
+    in
+    [ Cell.fromHtml codeHtml
+        |> Cell.indent
+    , example.pohled
+    ]
+        |> Cell.withSpaceBetween Size.medium
+        |> Row.fromCells
 
 
 
@@ -128,7 +290,7 @@ zmodernizovat zpr modelka =
 
 
 --------------------------------------------------------------------------------
--- POHLED --
+-- TRACK --
 --------------------------------------------------------------------------------
 
 

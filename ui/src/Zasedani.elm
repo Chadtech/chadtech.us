@@ -10,6 +10,7 @@ module Zasedani exposing
     , listener
     , openDevPanel
     , poca
+    , recordAnalytics
     , recordApiError
     , recordStorageDecodeError
     , setAdminPassword
@@ -260,6 +261,22 @@ datAnalytics analyticsModelka zasedani =
 ziskatAnalytics : Zasedani -> Analytics.Modelka
 ziskatAnalytics zasedani =
     zasedani.analytics
+
+
+recordAnalytics : { pageName : String } -> Analytics.Event -> Zasedani -> ( Zasedani, Cmd Analytics.Zpr )
+recordAnalytics args event zasedani =
+    let
+        ( novaAnalytics, cmd ) =
+            Analytics.record
+                { zasedaniId = id zasedani
+                , pageName = args.pageName
+                }
+                event
+                (ziskatAnalytics zasedani)
+    in
+    ( datAnalytics novaAnalytics zasedani
+    , cmd
+    )
 
 
 

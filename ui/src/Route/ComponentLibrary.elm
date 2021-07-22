@@ -17,6 +17,7 @@ import Url.Parser as P exposing (Parser)
 
 type Route
     = Button
+    | List
 
 
 
@@ -28,6 +29,11 @@ type Route
 buttonPath : String
 buttonPath =
     "button"
+
+
+listPath : String
+listPath =
+    "list"
 
 
 
@@ -45,6 +51,7 @@ parser : Parser (Route -> a) a
 parser =
     [ P.map landing <| P.top
     , P.map Button <| P.s buttonPath
+    , P.map List <| P.s listPath
     ]
         |> P.oneOf
 
@@ -55,9 +62,15 @@ toPath route =
         Button ->
             [ buttonPath ]
 
+        List ->
+            [ listPath ]
+
 
 toName : Route -> String
 toName route =
     case route of
         Button ->
             "Button"
+
+        List ->
+            "List"

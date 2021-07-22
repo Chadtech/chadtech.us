@@ -84,6 +84,8 @@ toBrowserDocument doc =
                 , Css.displayFlex
                 , Css.height <| Css.pct 100
                 ]
+            , Css.Global.pre
+                [ Css.margin Css.zero ]
             ]
                 |> Css.Global.global
 

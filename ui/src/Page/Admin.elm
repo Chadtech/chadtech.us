@@ -22,7 +22,7 @@ import Page.Admin.Blog as Blog
 import Ports.FromJs as FromJs
 import Route
 import Route.Admin as AdminRoute exposing (Route)
-import Style.Size as Size
+import Style.Size as Size exposing (Size)
 import View.Button as Button
 import View.Cell as Cell exposing (Cell)
 import View.Row as Row exposing (Row)
@@ -287,6 +287,10 @@ pohled modelka =
 nav : Page -> Cell Zpr
 nav page =
     let
+        width : Size
+        width =
+            Size.extraLarge 4
+
         navItemView : NavItem -> Row Zpr
         navItemView navItem =
             Button.fromLabel
@@ -294,12 +298,14 @@ nav page =
                 |> Button.withLink
                     (Route.fromAdminRoute <| navItemToRoute navItem)
                 |> Button.when (navItem == pageToNavItem page) Button.active
-                |> Button.toRow
+                |> Button.toCell
+                |> Cell.withExactWidth width
+                |> Row.fromCell
     in
     navItems
         |> List.map navItemView
         |> Row.toCell
-        |> Cell.withExactWidth (Size.extraLarge 4)
+        |> Cell.withExactWidth width
 
 
 body : Modelka -> Cell Zpr

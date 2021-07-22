@@ -70,11 +70,24 @@ superZmodernizovat zpr result =
     case result of
         Ok modelka ->
             let
+                ( novaModelka, cmd ) =
+                    zmodernizovat zpr modelka
+
                 analyticsEvent =
                     track zpr
+
+                ( novaZasedani, analyticsCmd ) =
+                    Zasedani.recordAnalytics
+                        { pageName = pageName modelka }
+                        analyticsEvent
+                        (ziskatZasedani novaModelka)
             in
-            zmodernizovat zpr modelka
-                |> Tuple.mapFirst Ok
+            ( Ok <| datZasedani novaZasedani novaModelka
+            , Cmd.batch
+                [ cmd
+                , Cmd.map AnalyticsZpr analyticsCmd
+                ]
+            )
 
         Err error ->
             ( Err error, Cmd.none )
@@ -139,6 +152,22 @@ poca json url navKey =
 --------------------------------------------------------------------------------
 -- INTERNAL HELPERS --
 --------------------------------------------------------------------------------
+
+
+pageName : Modelka -> String
+pageName modelka =
+    case modelka of
+        PageNotFound _ _ ->
+            "Not Found"
+
+        Blog _ ->
+            "Blog"
+
+        Admin _ ->
+            "Admin"
+
+        ComponentLibrary _ ->
+            "Component Library"
 
 
 pendingApiRequests : Modelka -> Api.PendingRequestCount
@@ -260,7 +289,7 @@ zmodernizovat zpr modelka =
         layout =
             getLayout modelka
     in
-    case zpr of
+    case Debug.log "Zpr" zpr of
         MsgDecodeFailed _ ->
             modelka
                 |> CmdUtil.withNoCmd

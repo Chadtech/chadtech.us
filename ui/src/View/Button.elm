@@ -206,6 +206,7 @@ simple label zpr =
 toCell : Button zpr -> Cell zpr
 toCell button =
     Cell.fromHtml [ toHtml button ]
+        |> Cell.shrink
 
 
 toRow : Button zpr -> Row zpr

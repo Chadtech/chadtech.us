@@ -6,6 +6,7 @@ module View.Cell exposing
     , map
     , none
     , pad
+    , shrink
     , toHtml
     , verticallyCenterContent
     , withBackgroundColor
@@ -51,6 +52,7 @@ type alias Modelka zpr =
 type Width
     = Grow
     | ExactWidth Size
+    | Shrink
 
 
 
@@ -136,11 +138,19 @@ withSpaceBetween size cells =
             mapModelka (\cell -> { cell | leftMargin = Just size })
     in
     case cells of
-        first :: rest ->
-            first :: List.map withMargin rest
+        None :: rest ->
+            withSpaceBetween size rest
+
+        (Visible modelka) :: rest ->
+            Visible modelka :: List.map withMargin rest
 
         [] ->
             []
+
+
+shrink : Cell zpr -> Cell zpr
+shrink =
+    mapModelka (\cell -> { cell | width = Shrink })
 
 
 withExactWidth : Size -> Cell zpr -> Cell zpr
@@ -185,6 +195,9 @@ toHtml cell =
 
                         ExactWidth size ->
                             Css.width <| Size.toPx size
+
+                        Shrink ->
+                            Css.flex (Css.int 0)
 
                 styles : List Css.Style
                 styles =
