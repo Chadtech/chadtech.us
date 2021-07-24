@@ -34,12 +34,12 @@ type alias Example zpr =
 
 type Page
     = Page__Button
-    | Page__List
+    | Page__Menu
 
 
 type NavItem
     = NavItem__Button
-    | NavItem__List
+    | NavItem__Menu
 
 
 type Zpr
@@ -119,8 +119,8 @@ routeToPage route =
         ComponentLibraryRoute.Button ->
             Page__Button
 
-        ComponentLibraryRoute.List ->
-            Page__List
+        ComponentLibraryRoute.Menu ->
+            Page__Menu
 
 
 navItemToLabel : NavItem -> String
@@ -129,8 +129,8 @@ navItemToLabel navItem =
         NavItem__Button ->
             "Button"
 
-        NavItem__List ->
-            "List"
+        NavItem__Menu ->
+            "Menu"
 
 
 navItemToRoute : NavItem -> Route
@@ -139,8 +139,8 @@ navItemToRoute navItem =
         NavItem__Button ->
             ComponentLibraryRoute.Button
 
-        NavItem__List ->
-            ComponentLibraryRoute.List
+        NavItem__Menu ->
+            ComponentLibraryRoute.Menu
 
 
 pageToNavItem : Page -> NavItem
@@ -149,8 +149,8 @@ pageToNavItem page =
         Page__Button ->
             NavItem__Button
 
-        Page__List ->
-            NavItem__List
+        Page__Menu ->
+            NavItem__Menu
 
 
 navItems : List NavItem
@@ -161,11 +161,11 @@ navItems =
                 NavItem__Button ->
                     ()
 
-                NavItem__List ->
+                NavItem__Menu ->
                     ()
     in
     [ NavItem__Button
-    , NavItem__List
+    , NavItem__Menu
     ]
 
 
@@ -215,12 +215,12 @@ body page =
         Page__Button ->
             buttonPage
 
-        Page__List ->
-            listPage
+        Page__Menu ->
+            menuPage
 
 
-listPage : Cell Zpr
-listPage =
+menuPage : Cell Zpr
+menuPage =
     Cell.none
 
 
