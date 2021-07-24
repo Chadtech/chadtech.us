@@ -270,6 +270,7 @@ recordAnalytics args event zasedani =
             Analytics.record
                 { zasedaniId = id zasedani
                 , pageName = args.pageName
+                , currentTime = zasedani.currentTime
                 }
                 event
                 (ziskatAnalytics zasedani)
@@ -298,4 +299,4 @@ listener =
 
 subscriptions : Sub Zpr
 subscriptions =
-    Time.every 1000 GotCurrentTime
+    Time.every 250 GotCurrentTime

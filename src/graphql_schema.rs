@@ -49,6 +49,7 @@ impl Mutation {
             let id: i32 = rng.gen();
             let nova_event = analytics::event::Nova {
                 id,
+                event_time: event.event_time,
                 name: event.name.as_str(),
                 zasedani_id: event.zasedani_id.as_str(),
                 page_name: event.page_name.as_str(),

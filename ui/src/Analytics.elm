@@ -32,13 +32,14 @@ type alias Modelka =
 
 
 type Event
-    = Event ({ pageName : String } -> EventModelka)
+    = Event ({ pageName : String, currentTime : Time.Posix } -> EventModelka)
     | None
 
 
 type alias EventModelka =
     { name : String
     , pageName : String
+    , currentTime : Time.Posix
     , props : List ( String, Encode.Value )
     }
 
@@ -100,6 +101,7 @@ sendEvents args events modelka =
         toGraphqlEvent : EventModelka -> Api.InputObject.NovaEvent
         toGraphqlEvent event =
             { name = event.name
+            , eventTime = toFloat <| Time.posixToMillis event.currentTime
             , zasedaniId = args.zasedaniId
             , pageName = event.pageName
             , propsJson = Encode.encode 0 (Encode.object event.props)
@@ -128,14 +130,25 @@ sendEvents args events modelka =
 -------------------------------------------------------------------------------
 
 
-record : { zasedaniId : String, pageName : String } -> Event -> Modelka -> ( Modelka, Cmd Zpr )
+record :
+    { zasedaniId : String
+    , pageName : String
+    , currentTime : Time.Posix
+    }
+    -> Event
+    -> Modelka
+    -> ( Modelka, Cmd Zpr )
 record args event modelka =
     case event of
         Event eventModelkaFn ->
             let
                 novaEvents : List EventModelka
                 novaEvents =
-                    eventModelkaFn { pageName = args.pageName } :: modelka.events
+                    eventModelkaFn
+                        { pageName = args.pageName
+                        , currentTime = args.currentTime
+                        }
+                        :: modelka.events
             in
             if List.length novaEvents > threshold then
                 modelka
@@ -160,9 +173,10 @@ record args event modelka =
 name : String -> Event
 name str =
     Event
-        (\{ pageName } ->
+        (\{ pageName, currentTime } ->
             { name = str
             , pageName = pageName
+            , currentTime = currentTime
             , props = []
             }
         )
@@ -181,12 +195,15 @@ withProp propName propVal event =
 
         Event fn ->
             let
-                modelkaFn : { pageName : String } -> EventModelka
+                modelkaFn : { pageName : String, currentTime : Time.Posix } -> EventModelka
                 modelkaFn args =
                     let
                         eventModelka : EventModelka
                         eventModelka =
-                            fn { pageName = args.pageName }
+                            fn
+                                { pageName = args.pageName
+                                , currentTime = args.currentTime
+                                }
                     in
                     { eventModelka | props = ( propName, propVal ) :: eventModelka.props }
             in

@@ -5,6 +5,7 @@ table! {
         zasedani_id -> Char,
         page_name -> Varchar,
         props_json -> Varchar,
+        event_time -> Double,
     }
 }
 

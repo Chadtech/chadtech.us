@@ -21,11 +21,12 @@ buildNovaEvent :
     NovaEventRequiredFields
     -> NovaEvent
 buildNovaEvent required____ =
-    { name = required____.name, zasedaniId = required____.zasedaniId, pageName = required____.pageName, propsJson = required____.propsJson }
+    { name = required____.name, eventTime = required____.eventTime, zasedaniId = required____.zasedaniId, pageName = required____.pageName, propsJson = required____.propsJson }
 
 
 type alias NovaEventRequiredFields =
     { name : String
+    , eventTime : Float
     , zasedaniId : String
     , pageName : String
     , propsJson : String
@@ -36,6 +37,7 @@ type alias NovaEventRequiredFields =
 -}
 type alias NovaEvent =
     { name : String
+    , eventTime : Float
     , zasedaniId : String
     , pageName : String
     , propsJson : String
@@ -47,4 +49,4 @@ type alias NovaEvent =
 encodeNovaEvent : NovaEvent -> Value
 encodeNovaEvent input____ =
     Encode.maybeObject
-        [ ( "name", Encode.string input____.name |> Just ), ( "zasedaniId", Encode.string input____.zasedaniId |> Just ), ( "pageName", Encode.string input____.pageName |> Just ), ( "propsJson", Encode.string input____.propsJson |> Just ) ]
+        [ ( "name", Encode.string input____.name |> Just ), ( "eventTime", Encode.float input____.eventTime |> Just ), ( "zasedaniId", Encode.string input____.zasedaniId |> Just ), ( "pageName", Encode.string input____.pageName |> Just ), ( "propsJson", Encode.string input____.propsJson |> Just ) ]
