@@ -73,6 +73,7 @@ superZmodernizovat zpr result =
                 ( novaModelka, cmd ) =
                     zmodernizovat zpr modelka
 
+                analyticsEvent : Analytics.Event
                 analyticsEvent =
                     track zpr
 
