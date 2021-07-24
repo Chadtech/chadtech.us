@@ -24,7 +24,8 @@ function setStorage(payload) {
 var app = Elm.Main.init({
     flags: {
         storage: getStorage(),
-        id: uuidv4()
+        id: uuidv4(),
+        currentTime: (new Date()).getTime()
     }
 });
 

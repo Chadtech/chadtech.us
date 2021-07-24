@@ -85,7 +85,11 @@ toBrowserDocument doc =
                 , Css.height <| Css.pct 100
                 ]
             , Css.Global.pre
-                [ Css.margin Css.zero ]
+                [ Css.margin Css.zero
+                , Css.backgroundColor
+                    (Color.toCss Color.content1)
+                    |> Css.important
+                ]
             ]
                 |> Css.Global.global
 

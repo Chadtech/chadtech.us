@@ -1,6 +1,17 @@
-module Page.ComponentLibrary exposing (Modelka, Zpr, datZasedani, getLayout, handleRouteChange, mapZasedani, poca, pohled, setLayout, track, ziskatZasedani, zmodernizovat)
+module Page.ComponentLibrary exposing
+    ( Modelka
+    , Zpr
+    , datZasedani
+    , getLayout
+    , handleRouteChange
+    , mapZasedani
+    , poca
+    , pohled
+    , setLayout
+    , ziskatZasedani
+    , zmodernizovat
+    )
 
-import Analytics
 import Html.Styled as H exposing (Html)
 import Layout exposing (Layout)
 import Route
@@ -9,7 +20,10 @@ import Style.Size as Size exposing (Size)
 import SyntaxHighlight
 import View.Button as Button
 import View.Cell as Cell exposing (Cell)
+import View.Menu as Menu
 import View.Row as Row exposing (Row)
+import View.TextField as Textfield
+import View.Textarea as Textarea
 import Zasedani exposing (Zasedani)
 
 
@@ -23,11 +37,15 @@ type alias Modelka =
     { layout : Layout
     , zasedani : Zasedani
     , page : Page
+    , textareaField : String
+    , textfield : String
+    , activeOption : Int
     }
 
 
 type alias Example zpr =
-    { code : String
+    { title : Maybe String
+    , code : String
     , pohled : Cell zpr
     }
 
@@ -35,15 +53,20 @@ type alias Example zpr =
 type Page
     = Page__Button
     | Page__Menu
+    | Page__Textarea
+    | Page__Textfield
 
 
 type NavItem
     = NavItem__Button
     | NavItem__Menu
+    | NavItem__Textarea
+    | NavItem__Textfield
 
 
 type Zpr
-    = Zpr
+    = TextareaUpdated String
+    | TextfieldUpdated String
 
 
 
@@ -57,6 +80,9 @@ poca zasedani layout route =
     { layout = layout
     , zasedani = zasedani
     , page = routeToPage route
+    , textareaField = "This is a text area"
+    , textfield = "This is a text field"
+    , activeOption = 2
     }
 
 
@@ -122,6 +148,12 @@ routeToPage route =
         ComponentLibraryRoute.Menu ->
             Page__Menu
 
+        ComponentLibraryRoute.Textarea ->
+            Page__Textarea
+
+        ComponentLibraryRoute.Textfield ->
+            Page__Textfield
+
 
 navItemToLabel : NavItem -> String
 navItemToLabel navItem =
@@ -131,6 +163,12 @@ navItemToLabel navItem =
 
         NavItem__Menu ->
             "Menu"
+
+        NavItem__Textarea ->
+            "Textarea"
+
+        NavItem__Textfield ->
+            "Textfield"
 
 
 navItemToRoute : NavItem -> Route
@@ -142,6 +180,12 @@ navItemToRoute navItem =
         NavItem__Menu ->
             ComponentLibraryRoute.Menu
 
+        NavItem__Textarea ->
+            ComponentLibraryRoute.Textarea
+
+        NavItem__Textfield ->
+            ComponentLibraryRoute.Textfield
+
 
 pageToNavItem : Page -> NavItem
 pageToNavItem page =
@@ -151,6 +195,12 @@ pageToNavItem page =
 
         Page__Menu ->
             NavItem__Menu
+
+        Page__Textarea ->
+            NavItem__Textarea
+
+        Page__Textfield ->
+            NavItem__Textfield
 
 
 navItems : List NavItem
@@ -163,9 +213,17 @@ navItems =
 
                 NavItem__Menu ->
                     ()
+
+                NavItem__Textarea ->
+                    ()
+
+                NavItem__Textfield ->
+                    ()
     in
     [ NavItem__Button
     , NavItem__Menu
+    , NavItem__Textarea
+    , NavItem__Textfield
     ]
 
 
@@ -178,7 +236,7 @@ navItems =
 pohled : Modelka -> List (Cell Zpr)
 pohled modelka =
     [ nav modelka.page
-    , body modelka.page
+    , body modelka
     ]
 
 
@@ -209,19 +267,130 @@ nav page =
         |> Cell.withExactWidth width
 
 
-body : Page -> Cell Zpr
-body page =
-    case page of
+body : Modelka -> Cell Zpr
+body modelka =
+    case modelka.page of
         Page__Button ->
             buttonPage
 
         Page__Menu ->
-            menuPage
+            menuPage modelka
+
+        Page__Textarea ->
+            textareaPage modelka
+
+        Page__Textfield ->
+            textfieldPage modelka
 
 
-menuPage : Cell Zpr
-menuPage =
-    Cell.none
+menuPage : Modelka -> Cell Zpr
+menuPage modelka =
+    let
+        simpleExample : Example Zpr
+        simpleExample =
+            let
+                optionFromInt : { activeOption : Int } -> Int -> Menu.Item Zpr
+                optionFromInt args int =
+                    Menu.itemFromLabel
+                        ("Option " ++ String.fromInt int)
+                        |> Menu.itemIsActive (args.activeOption == int)
+
+                menu : Cell Zpr
+                menu =
+                    List.map
+                        (optionFromInt { activeOption = modelka.activeOption })
+                        (List.range 0 5)
+                        |> Menu.itemsToCell
+            in
+            { title = Nothing
+            , code =
+                """
+textfield : Cell Zpr
+textfield =
+    Textfield.simple
+        "${value}"
+        TextfieldUpdated
+        |> Textfield.toCell
+            """
+            , pohled =
+                [ menu ]
+                    |> List.map Row.fromCell
+                    |> Row.toCell
+            }
+    in
+    [ simpleExample ]
+        |> List.map exampleToRow
+        |> Row.toCell
+
+
+textfieldPage : Modelka -> Cell Zpr
+textfieldPage modelka =
+    let
+        simpleExample : Example Zpr
+        simpleExample =
+            let
+                textfield : Cell Zpr
+                textfield =
+                    Textfield.simple
+                        modelka.textfield
+                        TextfieldUpdated
+                        |> Textfield.toCell
+            in
+            { title = Nothing
+            , code =
+                """
+textfield : Cell Zpr
+textfield =
+    Textfield.simple
+        "${value}"
+        TextfieldUpdated
+        |> Textfield.toCell
+            """
+                    |> String.replace "${value}" modelka.textfield
+            , pohled =
+                [ textfield ]
+                    |> List.map Row.fromCell
+                    |> Row.toCell
+            }
+    in
+    [ simpleExample ]
+        |> List.map exampleToRow
+        |> Row.toCell
+
+
+textareaPage : Modelka -> Cell Zpr
+textareaPage modelka =
+    let
+        simpleExample : Example Zpr
+        simpleExample =
+            let
+                textarea : Cell Zpr
+                textarea =
+                    Textarea.simple
+                        modelka.textareaField
+                        TextareaUpdated
+                        |> Textarea.toCell
+            in
+            { title = Nothing
+            , code =
+                """
+textarea : Cell Zpr
+textarea =
+    Textarea.simple
+        "${value}"
+        TextareaUpdated
+        |> Textarea.toCell
+            """
+                    |> String.replace "${value}" modelka.textfield
+            , pohled =
+                [ textarea ]
+                    |> List.map Row.fromCell
+                    |> Row.toCell
+            }
+    in
+    [ simpleExample ]
+        |> List.map exampleToRow
+        |> Row.toCell
 
 
 buttonPage : Cell Zpr
@@ -235,7 +404,8 @@ buttonPage =
                     Button.fromLabel "Button"
                         |> Button.toCell
             in
-            { code = """
+            { title = Nothing
+            , code = """
 button : Cell zpr
 button =
     Button.fromLabel "Button"
@@ -284,18 +454,8 @@ exampleToRow example =
 zmodernizovat : Zpr -> Modelka -> Modelka
 zmodernizovat zpr modelka =
     case zpr of
-        Zpr ->
-            modelka
+        TextareaUpdated str ->
+            { modelka | textareaField = str }
 
-
-
---------------------------------------------------------------------------------
--- TRACK --
---------------------------------------------------------------------------------
-
-
-track : Zpr -> Analytics.Event
-track zpr =
-    case zpr of
-        Zpr ->
-            Analytics.none
+        TextfieldUpdated str ->
+            { modelka | textfield = str }

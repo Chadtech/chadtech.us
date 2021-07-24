@@ -4,10 +4,13 @@ module View.Row exposing
     , fromCell
     , fromCells
     , fromString
+    , grow
+    , horizontallyCenterContent
     , map
     , pad
     , toCell
     , toHtml
+    , when
     , withBackgroundColor
     , withSpaceBetween
     , withTagName
@@ -42,7 +45,14 @@ type alias Modelka zpr =
     , topMargin : Maybe Size
     , fillVerticalSpace : Bool
     , padding : Maybe Padding
+    , height : Height
+    , horizontallyCenterContent : Bool
     }
+
+
+type Height
+    = Grow
+    | Shrink
 
 
 
@@ -67,6 +77,25 @@ mapModelka fn cell =
 --------------------------------------------------------------------------------
 
 
+when : Bool -> (Row zpr -> Row zpr) -> Row zpr -> Row zpr
+when cond fn row =
+    if cond then
+        fn row
+
+    else
+        row
+
+
+horizontallyCenterContent : Row zpr -> Row zpr
+horizontallyCenterContent =
+    mapModelka (\row -> { row | horizontallyCenterContent = True })
+
+
+grow : Row zpr -> Row zpr
+grow =
+    mapModelka (\row -> { row | height = Grow })
+
+
 pad : Padding -> Row zpr -> Row zpr
 pad padding =
     mapModelka (\row -> { row | padding = Just padding })
@@ -81,6 +110,8 @@ fromCells cells =
         , topMargin = Nothing
         , fillVerticalSpace = False
         , padding = Nothing
+        , height = Shrink
+        , horizontallyCenterContent = False
         }
 
 
@@ -111,6 +142,8 @@ map toMsg =
             , topMargin = row.topMargin
             , fillVerticalSpace = row.fillVerticalSpace
             , padding = row.padding
+            , height = row.height
+            , horizontallyCenterContent = row.horizontallyCenterContent
             }
         )
 
@@ -163,11 +196,30 @@ toHtml row =
                     ]
                         |> List.filterMap identity
 
+                heightStyle : Css.Style
+                heightStyle =
+                    case modelka.height of
+                        Grow ->
+                            Css.flex <| Css.int 1
+
+                        Shrink ->
+                            Css.batch []
+
+                horizontallyCenterContentStyle : Css.Style
+                horizontallyCenterContentStyle =
+                    if modelka.horizontallyCenterContent then
+                        Css.justifyContent Css.center
+
+                    else
+                        Css.batch []
+
                 styles : List Css.Style
                 styles =
                     [ Css.displayFlex
                     , Css.batch conditionalStyling
                     , CssUtil.when modelka.fillVerticalSpace (Css.flex <| Css.int 1)
+                    , heightStyle
+                    , horizontallyCenterContentStyle
                     ]
             in
             H.node (Maybe.withDefault "row" modelka.semantics)

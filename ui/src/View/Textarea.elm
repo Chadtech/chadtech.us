@@ -1,11 +1,12 @@
-module View.TextField exposing
-    ( Textfield
+module View.Textarea exposing
+    ( Textarea
+    , readOnly
     , simple
     , toCell
     )
 
 import Css
-import Html.Styled as H exposing (Html)
+import Html.Styled as H exposing (Attribute, Html)
 import Html.Styled.Attributes as A
 import Html.Styled.Events as Ev
 import Style.Border as Border
@@ -16,12 +17,12 @@ import View.Cell as Cell exposing (Cell)
 
 
 --------------------------------------------------------------------------------
--- TYPES --
+-- TYPY --
 --------------------------------------------------------------------------------
 
 
-type alias Textfield zpr =
-    { onInput : String -> zpr
+type alias Textarea zpr =
+    { onInput : Maybe (String -> zpr)
     , value : String
     }
 
@@ -32,24 +33,33 @@ type alias Textfield zpr =
 --------------------------------------------------------------------------------
 
 
-toHtml : Textfield zpr -> Html zpr
-toHtml textField =
+toHtml : Textarea zpr -> Html zpr
+toHtml textarea =
     let
         styles : List Css.Style
         styles =
             [ Border.toCss Border.indent
             , Css.backgroundColor <| Color.toCss Color.background1
-            , Css.height <| Size.toPx <| Size.extraLarge 1
+            , Css.height <| Size.toPx <| Size.extraLarge 4
             , Css.outline Css.none
             , Css.width <| Css.pct 100
+            , Css.whiteSpace Css.pre
+            ]
+
+        conditionalAttrs : List (Attribute zpr)
+        conditionalAttrs =
+            [ Maybe.map Ev.onInput textarea.onInput ]
+                |> List.filterMap identity
+
+        baseAttrs : List (Attribute zpr)
+        baseAttrs =
+            [ A.value textarea.value
+            , A.css styles
+            , A.spellcheck False
             ]
     in
-    H.input
-        [ Ev.onInput textField.onInput
-        , A.value textField.value
-        , A.css styles
-        , A.spellcheck False
-        ]
+    H.textarea
+        (baseAttrs ++ conditionalAttrs)
         []
 
 
@@ -59,13 +69,20 @@ toHtml textField =
 --------------------------------------------------------------------------------
 
 
-simple : String -> (String -> zpr) -> Textfield zpr
+simple : String -> (String -> zpr) -> Textarea zpr
 simple value onInput =
     { value = value
-    , onInput = onInput
+    , onInput = Just onInput
     }
 
 
-toCell : Textfield zpr -> Cell zpr
+readOnly : String -> Textarea zpr
+readOnly value =
+    { value = value
+    , onInput = Nothing
+    }
+
+
+toCell : Textarea zpr -> Cell zpr
 toCell textField =
     Cell.fromHtml [ toHtml textField ]

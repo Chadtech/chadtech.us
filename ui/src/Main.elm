@@ -14,12 +14,14 @@ import Page.Blog as Blog
 import Page.ComponentLibrary as ComponentLibrary
 import Ports.FromJs as FromJs
 import Route exposing (Route)
+import Style.Size as Size
 import Url exposing (Url)
 import Util.Cmd as CmdUtil
 import View.Cell as Cell exposing (Cell)
 import View.DevPanel as DevPanel
 import View.Dialog as Dialog exposing (Dialog)
 import View.Row as Row
+import View.Textarea as Textarea
 import Zasedani exposing (Zasedani)
 
 
@@ -58,10 +60,33 @@ superPohled result =
             pohled modelka
 
         Err error ->
-            [ "Error"
-            , "Chadtech.us failed to start, sorry about that"
+            let
+                errorMsg : String
+                errorMsg =
+                    case error of
+                        SessionFailedToInit subError ->
+                            Decode.errorToString subError
+            in
+            [ Row.fromCells
+                [ [ Row.fromString "Error"
+                  , Row.fromString
+                        """
+                        Chadtech.us failed to start, sorry about that. 
+                        Below is an error message describing what went wrong.
+                        """
+                  , Textarea.readOnly errorMsg
+                        |> Textarea.toCell
+                        |> Row.fromCell
+                  ]
+                    |> Row.withSpaceBetween Size.medium
+                    |> Row.toCell
+                    |> Cell.verticallyCenterContent
+                    |> Cell.withExactWidth (Size.extraLarge 6)
+                ]
+                |> Row.grow
+                |> Row.horizontallyCenterContent
             ]
-                |> List.map Row.fromString
+                --|> List.map Row.fromString
                 |> Document.fromBody
 
 
@@ -506,8 +531,8 @@ track zpr =
         AnalyticsZpr _ ->
             Analytics.none
 
-        ComponentLibraryZpr subZpr ->
-            ComponentLibrary.track subZpr
+        ComponentLibraryZpr _ ->
+            Analytics.none
 
 
 

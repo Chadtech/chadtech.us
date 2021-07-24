@@ -18,6 +18,8 @@ import Url.Parser as P exposing (Parser)
 type Route
     = Button
     | Menu
+    | Textarea
+    | Textfield
 
 
 
@@ -36,6 +38,16 @@ menuPath =
     "menu"
 
 
+textareaPath : String
+textareaPath =
+    "textarea"
+
+
+textefieldPath : String
+textefieldPath =
+    "texteField"
+
+
 
 ---------------------------------------------------------------
 -- API --
@@ -52,6 +64,8 @@ parser =
     [ P.map landing <| P.top
     , P.map Button <| P.s buttonPath
     , P.map Menu <| P.s menuPath
+    , P.map Textarea <| P.s textareaPath
+    , P.map Textfield <| P.s textefieldPath
     ]
         |> P.oneOf
 
@@ -65,6 +79,12 @@ toPath route =
         Menu ->
             [ menuPath ]
 
+        Textarea ->
+            [ textareaPath ]
+
+        Textfield ->
+            [ textefieldPath ]
+
 
 toName : Route -> String
 toName route =
@@ -74,3 +94,9 @@ toName route =
 
         Menu ->
             "Menu"
+
+        Textarea ->
+            "Textarea"
+
+        Textfield ->
+            "Textfield"
