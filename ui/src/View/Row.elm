@@ -12,6 +12,7 @@ module View.Row exposing
     , toHtml
     , when
     , withBackgroundColor
+    , withFontColor
     , withSpaceBetween
     , withTagName
     )
@@ -47,6 +48,7 @@ type alias Modelka zpr =
     , padding : Maybe Padding
     , height : Height
     , horizontallyCenterContent : Bool
+    , fontColor : Maybe Color
     }
 
 
@@ -112,6 +114,7 @@ fromCells cells =
         , padding = Nothing
         , height = Shrink
         , horizontallyCenterContent = False
+        , fontColor = Nothing
         }
 
 
@@ -144,8 +147,14 @@ map toMsg =
             , padding = row.padding
             , height = row.height
             , horizontallyCenterContent = row.horizontallyCenterContent
+            , fontColor = row.fontColor
             }
         )
+
+
+withFontColor : Color -> Row zpr -> Row zpr
+withFontColor color =
+    mapModelka (\row -> { row | fontColor = Just color })
 
 
 fillVerticalSpace : Row zpr -> Row zpr
@@ -189,6 +198,9 @@ toHtml row =
                 conditionalStyling : List Css.Style
                 conditionalStyling =
                     [ Maybe.map
+                        (Css.color << Color.toCss)
+                        modelka.fontColor
+                    , Maybe.map
                         (Css.backgroundColor << Color.toCss)
                         modelka.backgroundColor
                     , Maybe.map (Margin.toCss << Margin.top) modelka.topMargin

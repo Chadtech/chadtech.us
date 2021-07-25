@@ -1,6 +1,6 @@
 module View.Menu exposing (Item, itemFromLabel, itemIsActive, itemsToCell)
 
-import Style.Color as Color
+import Style.Color as Color exposing (Color)
 import Style.Padding as Padding
 import Style.Size as Size
 import View.Cell as Cell exposing (Cell)
@@ -28,9 +28,29 @@ type alias Item zpr =
 
 itemToRow : Int -> Item zpr -> Row zpr
 itemToRow index item =
+    let
+        backgroundColor : Color
+        backgroundColor =
+            if item.active then
+                Color.background4
+
+            else if modBy 2 index == 0 then
+                Color.background2
+
+            else
+                Color.background0
+
+        fontColor : Color
+        fontColor =
+            if item.active then
+                Color.content5
+
+            else
+                Color.content4
+    in
     Row.fromString item.label
-        |> Row.when (modBy 2 index == 0) (Row.withBackgroundColor Color.background2)
-        |> Row.when item.active (Row.withBackgroundColor Color.background4)
+        |> Row.withFontColor fontColor
+        |> Row.withBackgroundColor backgroundColor
         |> Row.pad (Padding.all Size.small)
 
 

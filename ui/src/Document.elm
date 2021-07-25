@@ -71,7 +71,6 @@ toBrowserDocument doc =
         globalStyling =
             [ Css.Global.everything
                 [ Css.fontFamilies [ "HFNSS" ]
-                , Css.color <| Color.toCss Color.content4
                 , Css.fontSize <| Size.toPx Size.text
                 , Css.property "-webkit-font-smoothing" "none"
                 , Css.boxSizing Css.borderBox
