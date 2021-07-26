@@ -8,6 +8,7 @@ use rand::Rng;
 
 pub struct Kontext {
     pub db_pool: Pool,
+    pub password: String,
 }
 
 impl juniper::Context for Kontext {}

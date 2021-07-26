@@ -210,10 +210,12 @@ async fn graphiql() -> HttpResponse {
 async fn graphql(
     pool: web::Data<Pool>,
     schema: web::Data<Schema>,
+    modelka: web::Data<Modelka>,
     req: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let ktx = graphql_schema::Kontext {
         db_pool: pool.get_ref().to_owned(),
+        password: modelka.get_ref().to_owned().admin_password,
     };
 
     let user = web::block(move || {
@@ -231,8 +233,8 @@ async fn graphql(
         .body(user))
 }
 
-async fn elm_asset_route(model: web::Data<Modelka>) -> HttpResponse {
-    match &model.get_ref().okoli {
+async fn elm_asset_route(modelka: web::Data<Modelka>) -> HttpResponse {
+    match &modelka.get_ref().okoli {
         Okoli::Dev(_) => match read_elm_file() {
             Ok(elm_file) => HttpResponse::Ok().body(elm_file),
             Err(error) => HttpResponse::InternalServerError().body(error.to_string()),

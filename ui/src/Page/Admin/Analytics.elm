@@ -12,8 +12,6 @@ module Page.Admin.Analytics exposing
 
 import Analytics
 import Api exposing (HasApi)
-import Api.Object.Post as PostSS
-import Api.Query as Query
 import Graphql.SelectionSet as SS
 import View.Row as Row exposing (Row)
 
