@@ -118,7 +118,6 @@ toHtml button =
             , Css.textAlign Css.center
             , activeStyle
             , hoverStyle
-            , Css.color <| Color.toCss Color.content4
             ]
 
         clickAttrs : List (Attribute msg)

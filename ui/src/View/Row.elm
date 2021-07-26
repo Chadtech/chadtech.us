@@ -7,20 +7,26 @@ module View.Row exposing
     , grow
     , horizontallyCenterContent
     , map
+    , maybe
+    , onClick
     , pad
     , toCell
     , toHtml
     , when
     , withBackgroundColor
+    , withBackgroundColorOnHover
+    , withCursor
     , withFontColor
     , withSpaceBetween
     , withTagName
     )
 
 import Css
+import Css.Global
 import Html.Styled as H exposing (Attribute, Html)
 import Html.Styled.Attributes as A
 import Style.Color as Color exposing (Color)
+import Style.Cursor as Cursor exposing (Cursor)
 import Style.Margin as Margin
 import Style.Padding as Padding exposing (Padding)
 import Style.Size exposing (Size)
@@ -30,7 +36,7 @@ import View.Cell as Cell exposing (Cell)
 
 
 --------------------------------------------------------------------------------
--- TYPES --
+-- TYPY --
 --------------------------------------------------------------------------------
 
 
@@ -49,6 +55,9 @@ type alias Modelka zpr =
     , height : Height
     , horizontallyCenterContent : Bool
     , fontColor : Maybe Color
+    , cursor : Maybe Cursor
+    , clickZpr : Maybe zpr
+    , backgroundColorOnHover : Maybe Color
     }
 
 
@@ -79,6 +88,22 @@ mapModelka fn cell =
 --------------------------------------------------------------------------------
 
 
+withBackgroundColorOnHover : Color -> Row zpr -> Row zpr
+withBackgroundColorOnHover color =
+    mapModelka (\row -> { row | backgroundColorOnHover = Just color })
+
+
+onClick : zpr -> Row zpr -> Row zpr
+onClick zpr =
+    mapModelka (\row -> { row | clickZpr = Just zpr })
+        >> withCursor Cursor.pointer
+
+
+withCursor : Cursor -> Row zpr -> Row zpr
+withCursor cursor =
+    mapModelka (\row -> { row | cursor = Just cursor })
+
+
 when : Bool -> (Row zpr -> Row zpr) -> Row zpr -> Row zpr
 when cond fn row =
     if cond then
@@ -86,6 +111,16 @@ when cond fn row =
 
     else
         row
+
+
+maybe : Maybe v -> (v -> Row zpr -> Row zpr) -> Row zpr -> Row zpr
+maybe mb fn row =
+    case mb of
+        Just v ->
+            fn v row
+
+        Nothing ->
+            row
 
 
 horizontallyCenterContent : Row zpr -> Row zpr
@@ -115,6 +150,9 @@ fromCells cells =
         , height = Shrink
         , horizontallyCenterContent = False
         , fontColor = Nothing
+        , cursor = Nothing
+        , clickZpr = Nothing
+        , backgroundColorOnHover = Nothing
         }
 
 
@@ -148,13 +186,22 @@ map toMsg =
             , height = row.height
             , horizontallyCenterContent = row.horizontallyCenterContent
             , fontColor = row.fontColor
+            , cursor = row.cursor
+            , clickZpr = Maybe.map toMsg row.clickZpr
+            , backgroundColorOnHover = row.backgroundColorOnHover
             }
         )
 
 
 withFontColor : Color -> Row zpr -> Row zpr
 withFontColor color =
-    mapModelka (\row -> { row | fontColor = Just color })
+    mapModelka
+        (\row ->
+            { row
+                | fontColor = Just color
+                , cells = List.map (Cell.withFontColor color) row.cells
+            }
+        )
 
 
 fillVerticalSpace : Row zpr -> Row zpr
@@ -205,6 +252,7 @@ toHtml row =
                         modelka.backgroundColor
                     , Maybe.map (Margin.toCss << Margin.top) modelka.topMargin
                     , Maybe.map Padding.toCss modelka.padding
+                    , Maybe.map Cursor.toCss modelka.cursor
                     ]
                         |> List.filterMap identity
 
@@ -225,6 +273,16 @@ toHtml row =
                     else
                         Css.batch []
 
+                backgroundColorOnHover : Css.Style
+                backgroundColorOnHover =
+                    case modelka.backgroundColorOnHover of
+                        Just color ->
+                            Css.hover
+                                [ Css.backgroundColor <| Color.toCss color ]
+
+                        Nothing ->
+                            Css.batch []
+
                 styles : List Css.Style
                 styles =
                     [ Css.displayFlex
@@ -232,6 +290,7 @@ toHtml row =
                     , CssUtil.when modelka.fillVerticalSpace (Css.flex <| Css.int 1)
                     , heightStyle
                     , horizontallyCenterContentStyle
+                    , backgroundColorOnHover
                     ]
             in
             H.node (Maybe.withDefault "row" modelka.semantics)

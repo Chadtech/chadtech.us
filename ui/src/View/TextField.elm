@@ -42,7 +42,6 @@ toHtml textField =
             , Css.height <| Size.toPx <| Size.extraLarge 1
             , Css.outline Css.none
             , Css.width <| Css.pct 100
-            , Css.color <| Color.toCss Color.content4
             ]
     in
     H.input

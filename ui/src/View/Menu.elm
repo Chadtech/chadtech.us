@@ -1,4 +1,4 @@
-module View.Menu exposing (Item, itemFromLabel, itemIsActive, itemsToCell)
+module View.Menu exposing (Item, itemFromLabel, itemIsActive, itemOnClick, itemsToCell)
 
 import Style.Color as Color exposing (Color)
 import Style.Padding as Padding
@@ -32,9 +32,6 @@ itemToRow index item =
         backgroundColor : Color
         backgroundColor =
             if item.active then
-                Color.background4
-
-            else if modBy 2 index == 0 then
                 Color.background2
 
             else
@@ -51,7 +48,9 @@ itemToRow index item =
     Row.fromString item.label
         |> Row.withFontColor fontColor
         |> Row.withBackgroundColor backgroundColor
+        |> Row.withBackgroundColorOnHover Color.background4
         |> Row.pad (Padding.all Size.small)
+        |> Row.maybe item.onClick Row.onClick
 
 
 
@@ -71,6 +70,11 @@ itemFromLabel label =
 itemIsActive : Bool -> Item zpr -> Item zpr
 itemIsActive active item =
     { item | active = active }
+
+
+itemOnClick : zpr -> Item zpr -> Item zpr
+itemOnClick zpr item =
+    { item | onClick = Just zpr }
 
 
 itemsToCell : List (Item zpr) -> Cell zpr

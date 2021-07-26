@@ -4,7 +4,6 @@ module Page.ComponentLibrary exposing
     , datZasedani
     , getLayout
     , handleRouteChange
-    , mapZasedani
     , poca
     , pohled
     , setLayout
@@ -67,6 +66,7 @@ type NavItem
 type Zpr
     = TextareaUpdated String
     | TextfieldUpdated String
+    | OptionClicked Int
 
 
 
@@ -101,11 +101,6 @@ handleRouteChange route =
 --------------------------------------------------------------------------------
 -- API --
 --------------------------------------------------------------------------------
-
-
-mapZasedani : (Zasedani -> Zasedani) -> Modelka -> Modelka
-mapZasedani f model =
-    datZasedani (f <| ziskatZasedani model) model
 
 
 datZasedani : Zasedani -> Modelka -> Modelka
@@ -294,6 +289,7 @@ menuPage modelka =
                     Menu.itemFromLabel
                         ("Option " ++ String.fromInt int)
                         |> Menu.itemIsActive (args.activeOption == int)
+                        |> Menu.itemOnClick (OptionClicked int)
 
                 menu : Cell Zpr
                 menu =
@@ -459,3 +455,6 @@ zmodernizovat zpr modelka =
 
         TextfieldUpdated str ->
             { modelka | textfield = str }
+
+        OptionClicked index ->
+            { modelka | activeOption = index }

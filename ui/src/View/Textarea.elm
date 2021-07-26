@@ -44,7 +44,6 @@ toHtml textarea =
             , Css.outline Css.none
             , Css.width <| Css.pct 100
             , Css.whiteSpace Css.pre
-            , Css.color <| Color.toCss Color.content4
             ]
 
         conditionalAttrs : List (Attribute zpr)

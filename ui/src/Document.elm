@@ -74,6 +74,7 @@ toBrowserDocument doc =
                 , Css.fontSize <| Size.toPx Size.text
                 , Css.property "-webkit-font-smoothing" "none"
                 , Css.boxSizing Css.borderBox
+                , Css.color <| Color.toCss Color.content4
                 ]
             , Css.Global.body
                 [ Css.backgroundColor <| Color.toCss Color.content1
