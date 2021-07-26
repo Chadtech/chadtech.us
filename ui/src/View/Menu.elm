@@ -26,8 +26,8 @@ type alias Item zpr =
 --------------------------------------------------------------------------------
 
 
-itemToRow : Int -> Item zpr -> Row zpr
-itemToRow index item =
+itemToRow : Item zpr -> Row zpr
+itemToRow item =
     let
         backgroundColor : Color
         backgroundColor =
@@ -49,6 +49,7 @@ itemToRow index item =
         |> Row.withFontColor fontColor
         |> Row.withBackgroundColor backgroundColor
         |> Row.withBackgroundColorOnHover Color.background4
+        |> Row.when (item.onClick /= Nothing) (Row.withFontColorOnHover Color.content5)
         |> Row.pad (Padding.all Size.small)
         |> Row.maybe item.onClick Row.onClick
 
@@ -79,7 +80,8 @@ itemOnClick zpr item =
 
 itemsToCell : List (Item zpr) -> Cell zpr
 itemsToCell items =
-    List.indexedMap itemToRow items
+    items
+        |> List.map itemToRow
         |> Row.toCell
         |> Cell.indent
         |> Cell.withBackgroundColor Color.background0

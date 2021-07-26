@@ -284,7 +284,10 @@ menuPage modelka =
         simpleExample : Example Zpr
         simpleExample =
             let
-                optionFromInt : { activeOption : Int } -> Int -> Menu.Item Zpr
+                optionFromInt :
+                    { activeOption : Int }
+                    -> Int
+                    -> Menu.Item Zpr
                 optionFromInt args int =
                     Menu.itemFromLabel
                         ("Option " ++ String.fromInt int)
@@ -294,19 +297,33 @@ menuPage modelka =
                 menu : Cell Zpr
                 menu =
                     List.map
-                        (optionFromInt { activeOption = modelka.activeOption })
+                        (optionFromInt
+                            { activeOption = modelka.activeOption }
+                        )
                         (List.range 0 5)
                         |> Menu.itemsToCell
             in
             { title = Nothing
             , code =
                 """
-textfield : Cell Zpr
-textfield =
-    Textfield.simple
-        "${value}"
-        TextfieldUpdated
-        |> Textfield.toCell
+optionFromInt :
+    { activeOption : Int }
+    -> Int
+    -> Menu.Item Zpr
+optionFromInt args int =
+    Menu.itemFromLabel
+        ("Option " ++ String.fromInt int)
+        |> Menu.itemIsActive (args.activeOption == int)
+        |> Menu.itemOnClick (OptionClicked int)
+
+menu : Cell Zpr
+menu =
+    List.map
+        (optionFromInt
+            { activeOption = modelka.activeOption }
+        )
+        (List.range 0 5)
+        |> Menu.itemsToCell
             """
             , pohled =
                 [ menu ]

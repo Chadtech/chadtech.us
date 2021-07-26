@@ -1,4 +1,4 @@
-module Page.Admin.Blog exposing
+module Page.Admin.Analytics exposing
     ( Flags
     , Modelka
     , Zpr
@@ -25,13 +25,12 @@ import View.Row as Row exposing (Row)
 
 
 type alias Modelka =
-    { api : Api.Modelka AdminBlogApiKey
-    , posts : List Post
+    { api : Api.Modelka AdminAnalyticsApiKey
     }
 
 
-type AdminBlogApiKey
-    = AdminBlogApiKey
+type AdminAnalyticsApiKey
+    = AdminAnalyticsApiKey
 
 
 type Post
@@ -55,13 +54,12 @@ type Zpr
 
 
 type alias Flags =
-    { posts : List Post }
+    {}
 
 
 poca : Flags -> Modelka
 poca flags =
     { api = Api.init
-    , posts = flags.posts
     }
 
 
@@ -73,13 +71,7 @@ load toZpr modelka =
     let
         flagsRequest : Api.Request Flags
         flagsRequest =
-            Query.blogpostsV2
-                (SS.map2 PostV2
-                    PostSS.id
-                    PostSS.title
-                    |> SS.map Post__V2
-                )
-                |> SS.map Flags
+            SS.succeed {}
                 |> Api.query
     in
     Api.send
@@ -134,6 +126,5 @@ track zpr =
 
 pohled : Modelka -> List (Row Zpr)
 pohled modelka =
-    [ Row.fromString "Posts V2"
-    , Row.fromCells []
+    [ Row.fromString "Analytics!"
     ]

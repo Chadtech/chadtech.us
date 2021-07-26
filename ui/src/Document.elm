@@ -90,6 +90,10 @@ toBrowserDocument doc =
                     (Color.toCss Color.content1)
                     |> Css.important
                 ]
+            , Css.Global.class "elmsh"
+                [ Css.property "background" "initial"
+                    |> Css.important
+                ]
             ]
                 |> Css.Global.global
 

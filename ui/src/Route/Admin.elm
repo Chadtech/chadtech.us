@@ -17,6 +17,7 @@ import Url.Parser as P exposing (Parser)
 
 type Route
     = Blog
+    | Analytics
 
 
 
@@ -28,6 +29,11 @@ type Route
 blogPath : String
 blogPath =
     "blog"
+
+
+analyticsPath : String
+analyticsPath =
+    "analytics"
 
 
 
@@ -45,6 +51,7 @@ parser : Parser (Route -> a) a
 parser =
     [ P.map landing <| P.top
     , P.map Blog <| P.s blogPath
+    , P.map Analytics <| P.s analyticsPath
     ]
         |> P.oneOf
 
@@ -55,9 +62,15 @@ toPath route =
         Blog ->
             [ blogPath ]
 
+        Analytics ->
+            [ analyticsPath ]
+
 
 toName : Route -> String
 toName route =
     case route of
         Blog ->
             "Blog"
+
+        Analytics ->
+            "Analytics"

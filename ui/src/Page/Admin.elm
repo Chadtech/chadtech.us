@@ -18,6 +18,7 @@ import Admin
 import Analytics
 import Api
 import Layout exposing (Layout)
+import Page.Admin.Analytics as AnalyticsPage
 import Page.Admin.Blog as Blog
 import Ports.FromJs as FromJs
 import Route
@@ -55,17 +56,21 @@ type alias Response value =
 
 type Page
     = Page__Blog Blog.Modelka
+    | Page__Analytics AnalyticsPage.Modelka
     | Page__Loading NavItem
 
 
 type Zpr
     = PasswordFieldUpdated String
     | BlogZpr Blog.Zpr
+    | AnalyticsZpr AnalyticsPage.Zpr
     | BlogLoaded (Response Blog.Flags)
+    | AnalyticsLoaded (Response AnalyticsPage.Flags)
 
 
 type NavItem
     = NavItem__Blog
+    | NavItem__Analytics
 
 
 
@@ -150,11 +155,14 @@ setLayout layout model =
 pageToNavItem : Page -> NavItem
 pageToNavItem page =
     case page of
+        Page__Loading navItem ->
+            navItem
+
         Page__Blog _ ->
             NavItem__Blog
 
-        Page__Loading navItem ->
-            navItem
+        Page__Analytics _ ->
+            NavItem__Analytics
 
 
 loadPage : Route -> Modelka -> ( Modelka, Cmd Zpr )
@@ -163,6 +171,9 @@ loadPage route modelka =
         AdminRoute.Blog ->
             Blog.load BlogLoaded modelka
 
+        AdminRoute.Analytics ->
+            AnalyticsPage.load AnalyticsLoaded modelka
+
 
 navItemToRoute : NavItem -> Route
 navItemToRoute navItem =
@@ -170,12 +181,18 @@ navItemToRoute navItem =
         NavItem__Blog ->
             AdminRoute.Blog
 
+        NavItem__Analytics ->
+            AdminRoute.Analytics
+
 
 navItemToLabel : NavItem -> String
 navItemToLabel navItem =
     case navItem of
         NavItem__Blog ->
             "Blog"
+
+        NavItem__Analytics ->
+            "Analytics"
 
 
 datPasswordField : String -> Modelka -> Modelka
@@ -194,10 +211,24 @@ routeToNavItem route =
         AdminRoute.Blog ->
             NavItem__Blog
 
+        AdminRoute.Analytics ->
+            NavItem__Analytics
+
 
 navItems : List NavItem
 navItems =
-    [ NavItem__Blog ]
+    let
+        _ =
+            case NavItem__Blog of
+                NavItem__Blog ->
+                    ()
+
+                NavItem__Analytics ->
+                    ()
+    in
+    [ NavItem__Blog
+    , NavItem__Analytics
+    ]
 
 
 
@@ -237,6 +268,41 @@ zmodernizovat zpr modelka =
             , Cmd.none
             )
 
+        AnalyticsLoaded response ->
+            ( Api.handle response handleAnalyticsLoaded modelka
+            , Cmd.none
+            )
+
+        AnalyticsZpr subZpr ->
+            case modelka.page of
+                Page__Analytics subModelka ->
+                    let
+                        ( novaSubModelka, cmd ) =
+                            AnalyticsPage.zmodernizovat subZpr subModelka
+                    in
+                    ( datPage
+                        (Page__Analytics novaSubModelka)
+                        modelka
+                    , Cmd.map AnalyticsZpr cmd
+                    )
+
+                _ ->
+                    ( modelka, Cmd.none )
+
+
+handleAnalyticsLoaded : Result Api.Error AnalyticsPage.Flags -> Modelka -> Modelka
+handleAnalyticsLoaded result modelka =
+    case result of
+        Ok flags ->
+            datPage
+                (Page__Analytics <| AnalyticsPage.poca flags)
+                modelka
+
+        Err error ->
+            mapZasedani
+                (Zasedani.recordApiError error)
+                modelka
+
 
 handleBlogLoaded : Result Api.Error Blog.Flags -> Modelka -> Modelka
 handleBlogLoaded result modelka =
@@ -269,6 +335,12 @@ track zpr =
 
         BlogLoaded _ ->
             Analytics.none
+
+        AnalyticsLoaded _ ->
+            Analytics.none
+
+        AnalyticsZpr subZpr ->
+            AnalyticsPage.track subZpr
 
 
 
@@ -335,6 +407,10 @@ body modelka =
 
                 Page__Loading _ ->
                     [ Row.fromString "Loading.." ]
+
+                Page__Analytics subModelka ->
+                    AnalyticsPage.pohled subModelka
+                        |> List.map (Row.map AnalyticsZpr)
     in
     [ titleRows
     , navItemRows

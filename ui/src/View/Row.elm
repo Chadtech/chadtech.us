@@ -17,14 +17,15 @@ module View.Row exposing
     , withBackgroundColorOnHover
     , withCursor
     , withFontColor
+    , withFontColorOnHover
     , withSpaceBetween
     , withTagName
     )
 
 import Css
-import Css.Global
 import Html.Styled as H exposing (Attribute, Html)
 import Html.Styled.Attributes as A
+import Html.Styled.Events as Ev
 import Style.Color as Color exposing (Color)
 import Style.Cursor as Cursor exposing (Cursor)
 import Style.Margin as Margin
@@ -58,6 +59,7 @@ type alias Modelka zpr =
     , cursor : Maybe Cursor
     , clickZpr : Maybe zpr
     , backgroundColorOnHover : Maybe Color
+    , fontColorOnHover : Maybe Color
     }
 
 
@@ -91,6 +93,17 @@ mapModelka fn cell =
 withBackgroundColorOnHover : Color -> Row zpr -> Row zpr
 withBackgroundColorOnHover color =
     mapModelka (\row -> { row | backgroundColorOnHover = Just color })
+
+
+withFontColorOnHover : Color -> Row zpr -> Row zpr
+withFontColorOnHover color =
+    mapModelka
+        (\row ->
+            { row
+                | fontColorOnHover = Just color
+                , cells = List.map (Cell.withFontColorOnHover color) row.cells
+            }
+        )
 
 
 onClick : zpr -> Row zpr -> Row zpr
@@ -153,6 +166,7 @@ fromCells cells =
         , cursor = Nothing
         , clickZpr = Nothing
         , backgroundColorOnHover = Nothing
+        , fontColorOnHover = Nothing
         }
 
 
@@ -189,6 +203,7 @@ map toMsg =
             , cursor = row.cursor
             , clickZpr = Maybe.map toMsg row.clickZpr
             , backgroundColorOnHover = row.backgroundColorOnHover
+            , fontColorOnHover = row.fontColorOnHover
             }
         )
 
@@ -283,17 +298,38 @@ toHtml row =
                         Nothing ->
                             Css.batch []
 
+                fontColorOnHover : Css.Style
+                fontColorOnHover =
+                    case modelka.fontColorOnHover of
+                        Just color ->
+                            Css.hover
+                                [ Css.color <| Color.toCss color ]
+
+                        Nothing ->
+                            Css.batch []
+
                 styles : List Css.Style
                 styles =
                     [ Css.displayFlex
                     , Css.batch conditionalStyling
-                    , CssUtil.when modelka.fillVerticalSpace (Css.flex <| Css.int 1)
+                    , CssUtil.when
+                        modelka.fillVerticalSpace
+                        (Css.flex <| Css.int 1)
                     , heightStyle
                     , horizontallyCenterContentStyle
                     , backgroundColorOnHover
+                    , fontColorOnHover
                     ]
+
+                conditionalAttrs : List (Attribute zpr)
+                conditionalAttrs =
+                    [ Maybe.map Ev.onClick modelka.clickZpr ]
+                        |> List.filterMap identity
+
+                baseAttrs : List (Attribute msg)
+                baseAttrs =
+                    [ A.css styles ]
             in
             H.node (Maybe.withDefault "row" modelka.semantics)
-                [ A.css styles
-                ]
+                (baseAttrs ++ conditionalAttrs)
                 (List.map Cell.toHtml modelka.cells)

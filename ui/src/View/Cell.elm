@@ -12,6 +12,7 @@ module View.Cell exposing
     , withBackgroundColor
     , withExactWidth
     , withFontColor
+    , withFontColorOnHover
     , withSpaceBetween
     )
 
@@ -46,6 +47,7 @@ type alias Modelka zpr =
     , leftMargin : Maybe Size
     , backgroundColor : Maybe Color
     , verticallyCenterContent : Bool
+    , fontColorOnHover : Maybe Color
     }
 
 
@@ -77,6 +79,11 @@ mapModelka fn cell =
 --------------------------------------------------------------------------------
 
 
+withFontColorOnHover : Color -> Cell zpr -> Cell zpr
+withFontColorOnHover color =
+    mapModelka (\cell -> { cell | fontColorOnHover = Just color })
+
+
 none : Cell zpr
 none =
     None
@@ -103,6 +110,7 @@ fromHtml html =
         , leftMargin = Nothing
         , backgroundColor = Nothing
         , verticallyCenterContent = False
+        , fontColorOnHover = Nothing
         }
 
 
@@ -119,6 +127,7 @@ map toMsg cell =
                 , leftMargin = modelka.leftMargin
                 , backgroundColor = modelka.backgroundColor
                 , verticallyCenterContent = modelka.verticallyCenterContent
+                , fontColorOnHover = modelka.fontColorOnHover
                 }
 
         None ->
@@ -199,6 +208,16 @@ toHtml cell =
                         Shrink ->
                             Css.flex (Css.int 0)
 
+                fontColorOnHover : Css.Style
+                fontColorOnHover =
+                    case modelka.fontColorOnHover of
+                        Just color ->
+                            Css.hover
+                                [ Css.color <| Color.toCss color ]
+
+                        Nothing ->
+                            Css.batch []
+
                 styles : List Css.Style
                 styles =
                     [ widthStyle
@@ -217,6 +236,7 @@ toHtml cell =
                             , Css.flexDirection Css.column
                             , Css.displayFlex
                             ]
+                    , fontColorOnHover
                     ]
             in
             H.node "cell"
